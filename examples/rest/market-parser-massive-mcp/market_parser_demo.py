@@ -9,18 +9,18 @@ from pydantic_ai.mcp import MCPServerStdio
 load_dotenv()
 
 # ------------- MCP Server Factory -------------
-def create_polygon_mcp_server():
-    polygon_api_key = os.getenv("POLYGON_API_KEY")
-    if not polygon_api_key:
-      raise Exception("POLYGON_API_KEY is not set in the environment or .env file.")
+def create_massive_mcp_server():
+    massive_api_key = os.getenv("MASSIVE_API_KEY")
+    if not massive_api_key:
+      raise Exception("MASSIVE_API_KEY is not set in the environment or .env file.")
     env = os.environ.copy()
-    env["POLYGON_API_KEY"] = polygon_api_key
+    env["MASSIVE_API_KEY"] = massive_api_key
     return MCPServerStdio(
         command="uvx",
         args=[
             "--from",
-            "git+https://github.com/polygon-io/mcp_polygon@v0.4.0",
-            "mcp_polygon"
+            "git+https://github.com/massive-com/mcp_massive@v0.6.0",
+            "mcp_massive"
         ],
         env=env
     )
@@ -70,12 +70,12 @@ def print_tools_used(response):
 async def cli_async():
     print("Welcome to the Market Parser CLI. Type 'exit' to quit.")
     try:
-        server = create_polygon_mcp_server()
+        server = create_massive_mcp_server()
         agent = Agent(
             model="anthropic:claude-4-sonnet-20250514",
             mcp_servers=[server],
             system_prompt=(
-                "You are an expert financial analyst. Note that when using Polygon tools, prices are already stock split adjusted. "
+                "You are an expert financial analyst. Note that when using Massive tools, prices are already stock split adjusted. "
                 "Use the latest data available. Always double check your math. "
                 "For any questions about the current date, use the 'get_today_date' tool. "
                 "For long or complex queries, break the query into logical subtasks and process each subtask in order."

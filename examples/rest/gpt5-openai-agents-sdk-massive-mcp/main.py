@@ -1,6 +1,6 @@
-"""CLI financial analyst using OpenAI Agents SDK, GPT-5, and Polygon.io MCP server.
+"""CLI financial analyst using OpenAI Agents SDK, GPT-5, and Massive MCP server.
 
-This script launches a stdio MCP server for Polygon.io tools, runs a single
+This script launches a stdio MCP server for Massive tools, runs a single
 analysis agent with an input guardrail to ensure finance-related prompts, and
 renders only the agent's final output. Users can optionally save analyses as
 Markdown reports in the `reports/` directory.
@@ -80,16 +80,16 @@ async def finance_guardrail(context, agent, input_data):
         tripwire_triggered=not final_output.is_about_finance,
     )
 
-def create_polygon_mcp_server():
-    """Create a stdio MCP server instance configured with POLYGON_API_KEY.
+def create_massive_mcp_server():
+    """Create a stdio MCP server instance configured with MASSIVE_API_KEY.
     """
-    api_key = os.getenv("POLYGON_API_KEY")
+    api_key = os.getenv("MASSIVE_API_KEY")
     if not api_key:
-        raise Exception("POLYGON_API_KEY not set in environment.")
+        raise Exception("MASSIVE_API_KEY not set in environment.")
     return MCPServerStdio(params={
         "command": "uvx",
-        "args": ["--from", "git+https://github.com/polygon-io/mcp_polygon@v0.4.0", "mcp_polygon"],
-        "env": {**os.environ, "POLYGON_API_KEY": api_key}
+        "args": ["--from", "git+https://github.com/massive-com/mcp_massive@v0.6.0", "mcp_massive"],
+        "env": {**os.environ, "MASSIVE_API_KEY": api_key}
     })
 
 # Output functions
@@ -126,7 +126,7 @@ async def cli_async():
     
     try:
         session = SQLiteSession("finance_conversation")
-        server = create_polygon_mcp_server() 
+        server = create_massive_mcp_server() 
         
         async with server:
             while True:
@@ -140,24 +140,24 @@ async def cli_async():
                         print("Please enter a valid query (at least 2 characters).")
                         continue
                     
-                    with trace("Polygon.io Demo"):
+                    with trace("Massive Demo"):
                         try:
                             analysis_agent = Agent(
                                 name="Financial Analysis Agent",
                                 instructions=(
                                     "Financial analysis agent. Steps:\n"
                                     "1. Verify finance-related using guardrail\n"
-                                    "2. Call Polygon tools precisely; pull the minimal required data.\n"
+                                    "2. Call Massive tools precisely; pull the minimal required data.\n"
                                     "3. Include disclaimers.\n"
                                     "4. Offer to save reports if not asked by the user to save a report.\n\n"
                                     "RULES:\n"
                                     "Double-check math; limit news to ≤3 articles/ticker in date range.\n" 
                                     "If the user asks to save a report, save it to the reports folder using the save_analysis_report tool.\n"
-                                    "When using any polygon.io data tools, be mindful of how much data you pull based \n"
+                                    "When using any massive.com data tools, be mindful of how much data you pull based \n"
                                     "on the users input to minimize context being exceeded.\n"
                                     "If data unavailable or tool fails, explain gracefully — never fabricate.\n"
                                     "TOOLS:\n" 
-                                    "Polygon.io data, save_analysis_report\n"
+                                    "Massive data, save_analysis_report\n"
                                     "Disclaimer: Not financial advice. For informational purposes only."
                                 ),
                                 mcp_servers=[server],

@@ -1,8 +1,8 @@
 [project]
-name = "market-parser-polygon-mcp"
+name = "market-parser-massive-mcp"
 version = "1.0.0"
-description = "This shows off the Polygon.io MCP server in action within an agentic workflow using Pydantic AI."
-authors = [{ name = "Alex Novotny", email = "alex.novotny@polygon.io" }]
+description = "This shows off the Massive MCP server in action within an agentic workflow using Pydantic AI."
+authors = [{ name = "Alex Novotny", email = "alex.novotny@massive.com" }]
 requires-python = ">=3.10"
 dependencies = [
     "pydantic-ai",

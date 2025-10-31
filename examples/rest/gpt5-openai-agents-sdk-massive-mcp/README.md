@@ -1,10 +1,10 @@
-# GPT-5 + OpenAI Agents SDK + Polygon.io MCP Server — Agentic Financial Analyst Demo
+# GPT-5 + OpenAI Agents SDK + Massive MCP Server — Agentic Financial Analyst Demo
 
 <div align="center">
   <img src="../../../images/logo.png" alt="Project Logo" width="100%"/>
 </div>
 
-A simple Python CLI for natural language financial queries using [GPT‑5](https://openai.com/gpt-5/) via the [OpenAI](https://openai.com/) [Agents SDK](https://openai.github.io/openai-agents-python/) and the [Polygon.io](https://polygon.io/) [MCP server](https://github.com/polygon-io/mcp_polygon). It also supports saving analyses as Markdown reports.
+A simple Python CLI for natural language financial queries using [GPT‑5](https://openai.com/gpt-5/) via the [OpenAI](https://openai.com/) [Agents SDK](https://openai.github.io/openai-agents-python/) and the [Massive](https://massive.com/) [MCP server](https://github.com/massive-com/mcp_massive). It also supports saving analyses as Markdown reports.
 
 ## Features
 
@@ -35,12 +35,12 @@ A simple Python CLI for natural language financial queries using [GPT‑5](https
 
 2. **Get your API keys:**
    - [OpenAI API key](https://platform.openai.com/api-keys)
-   - [Polygon.io API key](https://polygon.io/)
+   - [Massive API key](https://massive.com/)
 
 3. **Create a `.env` file in the same directory as `main.py`:**
     ```
     OPENAI_API_KEY=sk-...
-    POLYGON_API_KEY=your_polygon_api_key_here
+    MASSIVE_API_KEY=your_massive_api_key_here
     ```
     Both keys are required for the CLI to work.
 
@@ -71,7 +71,7 @@ For reference, the analysis agent follows instruction steps like:
 
 ```
 1. Verify finance-related using guardrail
-2. Gather market data with Polygon.io tools
+2. Gather market data with Massive tools
 3. Include disclaimers
 4. Offer to save reports when appropriate
 ```
@@ -81,7 +81,7 @@ Be specific in your prompt. The better the prompt — the better the response.
 Putting in `Do a return on investment analysis of Meta vs Microsoft. Review news, sentiment, rating, earnings. Analyze the results. Save a report. ` will result in a report similar to what exists in example.md in the reports folder of this repo.
 
 <div align="center">
-  <img src="../gpt5-openai-agents-sdk-polygon-mcp/images/example.png" alt="Example" width="100%"/>
+  <img src="../gpt5-openai-agents-sdk-massive-mcp/images/example.png" alt="Example" width="100%"/>
 </div>
 
 ---
@@ -89,10 +89,10 @@ Putting in `Do a return on investment analysis of Meta vs Microsoft. Review news
 ## Troubleshooting
 
 - **Missing API Key:**  
-  If you see an error about `POLYGON_API_KEY` or `OPENAI_API_KEY`, make sure your `.env` file is in the same directory and contains both keys:
+  If you see an error about `MASSIVE_API_KEY` or `OPENAI_API_KEY`, make sure your `.env` file is in the same directory and contains both keys:
   ```
   OPENAI_API_KEY=sk-...
-  POLYGON_API_KEY=your_polygon_api_key_here
+  MASSIVE_API_KEY=your_massive_api_key_here
   ```
 
 - **`uvx: command not found`:**  
@@ -115,8 +115,8 @@ Putting in `Do a return on investment analysis of Meta vs Microsoft. Review news
 
 ## How it Works
 
-- Loads your OpenAI and Polygon API keys from `.env`.
-- Starts the Polygon MCP server over stdio: `uvx --from git+https://github.com/polygon-io/mcp_polygon@v0.4.0 mcp_polygon` (no manual server setup).
+- Loads your OpenAI and Massive API keys from `.env`.
+- Starts the Massive MCP server over stdio: `uvx --from git+https://github.com/massive-com/mcp_massive@v0.6.0 mcp_massive` (no manual server setup).
 - Runs a GPT‑5 analysis agent (OpenAI Agents SDK) with a finance guardrail and tools.
 - Can save formatted analyses via `save_analysis_report` to `reports/<category>/...`.
 - Persists short‑term session context while the CLI runs and renders rich output.

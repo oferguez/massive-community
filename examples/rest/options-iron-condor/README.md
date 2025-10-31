@@ -19,7 +19,7 @@ The strategy profits when the stock price stays between the two sold strikes at 
 
 ## ✨ Features
 
-- **Real-time Options Data**: Uses Polygon.io API for live options chains
+- **Real-time Options Data**: Uses Massive API for live options chains
 - **Risk Analysis**: Calculates max profit, max loss, and probability of profit
 - **Multiple Ranking Criteria**: Sort by credit, probability, or risk/reward ratio
 - **Flexible Filtering**: Set minimum credit, maximum risk, and probability thresholds
@@ -39,7 +39,7 @@ The strategy profits when the stock price stays between the two sold strikes at 
 ### Prerequisites
 
 - Python 3.10 or higher
-- Polygon.io API key (**Must be on Options Advanced license type**)
+- Massive API key (**Must be on Options Advanced license type**)
 
 ### Installation
 
@@ -57,11 +57,11 @@ The strategy profits when the stock price stays between the two sold strikes at 
 3. **Set up environment:**
    ```bash
    cp .env.example .env
-   # Edit .env and add your Polygon.io API key
+   # Edit .env and add your Massive API key
    ```
 
-4. **Get your Polygon.io API key:**
-   - Visit [polygon.io](https://polygon.io/dashboard)
+4. **Get your Massive API key:**
+   - Visit [massive.com](https://massive.com/dashboard)
    - Sign up for an account
    - Upgrade to Options Advanced
    - Copy your API key to the `.env` file
@@ -136,7 +136,7 @@ uv run screener.py pnl --csv data/spy_iron_condors.csv
 ## 🆕 New Features
 
 ### Earnings Alerts
-The screener automatically checks for upcoming earnings using Polygon's Benzinga earnings data and includes a `has_upcoming_earnings` flag in the CSV output. When earnings are detected, you'll see a warning message:
+The screener automatically checks for upcoming earnings using Massive's Benzinga earnings data and includes a `has_upcoming_earnings` flag in the CSV output. When earnings are detected, you'll see a warning message:
 
 ```
 ⚠️  Warning: AAPL has upcoming earnings within 7 days
@@ -195,7 +195,7 @@ Create a `.env` file with the following variables:
 
 ```bash
 # Required
-POLYGON_API_KEY=your_api_key_here
+MASSIVE_API_KEY=your_api_key_here
 
 # Optional
 DEBUG=false  # Set to 'true' for detailed logging
@@ -248,8 +248,8 @@ iron-condor-screener/
 
 ### Data Sources
 
-- **Real-time Options Data**: Polygon.io API
-- **Current Stock Prices**: Polygon.io last trade data
+- **Real-time Options Data**: Massive API
+- **Current Stock Prices**: Massive last trade data
 - **Options Chains**: Live bid/ask prices, volume, and open interest
 
 ## ⚠️ Important Disclaimers
@@ -258,13 +258,13 @@ iron-condor-screener/
 - **Not Financial Advice**: Results should not be considered as investment advice
 - **Risk Warning**: Options trading involves significant risk of loss
 - **Data Accuracy**: While we strive for accuracy, always verify data independently
-- **API Limits**: Free Polygon.io accounts have rate limits
+- **API Limits**: Free Massive accounts have rate limits
 
 ## 🐛 Troubleshooting
 
 ### Common Issues
 
-**"POLYGON_API_KEY not found"**
+**"MASSIVE_API_KEY not found"**
 - Make sure you've created a `.env` file with your API key
 - Verify the API key is correct and active
 

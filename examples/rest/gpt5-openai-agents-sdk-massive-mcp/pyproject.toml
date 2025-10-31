@@ -1,7 +1,7 @@
 [project]
-name = "gpt5-polygonio-demo"
+name = "gpt5-massivecom-demo"
 version = "0.1.0"
-description = "Agentic workflow demo using GPT-5, OpenAI Agents SDK and Polygon.io"
+description = "Agentic workflow demo using GPT-5, OpenAI Agents SDK and Massive"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [

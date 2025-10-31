@@ -12,7 +12,7 @@ import numpy as np
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 from pathlib import Path
-from polygon import RESTClient
+from massive import RESTClient
 from dotenv import load_dotenv
 from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass
@@ -38,10 +38,10 @@ class IronCondor:
 
 class IronCondorScreener:
     def __init__(self):
-        """Initialize the screener with Polygon API client"""
-        api_key = os.getenv('POLYGON_API_KEY')
+        """Initialize the screener with Massive API client"""
+        api_key = os.getenv('MASSIVE_API_KEY')
         if not api_key:
-            raise ValueError("POLYGON_API_KEY not found in environment variables")
+            raise ValueError("MASSIVE_API_KEY not found in environment variables")
         
         self.client = RESTClient(api_key=api_key)
         self.debug = os.getenv('DEBUG', 'false').lower() == 'true'

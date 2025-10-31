@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 from pathlib import Path
-from polygon import RESTClient
+from massive import RESTClient
 from dotenv import load_dotenv
 
 ET = ZoneInfo("America/New_York")
@@ -12,7 +12,7 @@ ET = ZoneInfo("America/New_York")
 load_dotenv()
 
 def make_client():
-    return RESTClient(api_key=os.getenv("POLYGON_API_KEY"))
+    return RESTClient(api_key=os.getenv("MASSIVE_API_KEY"))
 
 def today_et() -> datetime:
     return datetime.now(ET)

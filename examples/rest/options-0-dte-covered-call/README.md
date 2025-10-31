@@ -4,11 +4,11 @@
   <img src="../../../images/logo.png" alt="Project Logo" width="100%"/>
 </div>
 
-A Python utility that screens and analyzes 0-DTE (zero days to expiration) covered call options on SPY using real-time market data from Polygon.io. This tool helps identify optimal covered call opportunities based on customizable criteria including delta, premium yield, and probability of profit.
+A Python utility that screens and analyzes 0-DTE (zero days to expiration) covered call options on SPY using real-time market data from Massive. This tool helps identify optimal covered call opportunities based on customizable criteria including delta, premium yield, and probability of profit.
 
 ## Features
 
-- **Real-time Options Data**: Fetches live options chain data from Polygon.io
+- **Real-time Options Data**: Fetches live options chain data from Massive
 - **0-DTE Focus**: Specifically designed for same-day expiration covered calls
 - **Advanced Filtering**: Filter by delta range, out-of-the-money percentage, bid/ask spreads, and open interest
 - **Multiple Ranking Metrics**: Sort results by premium yield, max profit, or probability of profit
@@ -34,13 +34,13 @@ This tool provides a comprehensive screening system for 0-DTE covered call strat
 - Python 3.10+
 - `uv` package manager
   - Install: `pipx install uv` or `pip install uv`
-- Polygon.io API key (**Must be on Options Advanced license type**)
+- Massive API key (**Must be on Options Advanced license type**)
 
 ## Setup
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/polygon-io/community.git
+   git clone https://github.com/massive-com/community.git
    cd examples/rest/options-0-dte-covered-call
    ```
 
@@ -52,11 +52,11 @@ This tool provides a comprehensive screening system for 0-DTE covered call strat
 3. **Set up environment variables**:
    ```bash
    cp env.example .env
-   # Edit .env and add your Polygon API key
+   # Edit .env and add your Massive API key
    ```
 
-4. **Get a Polygon.io API key**:
-   - Visit [polygon.io](https://polygon.io/)
+4. **Get a Massive API key**:
+   - Visit [massive.com](https://massive.com/)
    - Sign up for an account
    - Upgrade to Options Advanced
    - Copy your API key to the `.env` file
@@ -141,14 +141,14 @@ The screener generates CSV files with the following columns:
 
 ## Environment Variables
 
-- `POLYGON_API_KEY` (required): Your Polygon.io API key
+- `MASSIVE_API_KEY` (required): Your Massive API key
 
 ## Troubleshooting
 
 ### Common Issues
 
-- **"POLYGON_API_KEY not set in environment"**
-  - Ensure `POLYGON_API_KEY` is present in `.env` file or exported in your shell
+- **"MASSIVE_API_KEY not set in environment"**
+  - Ensure `MASSIVE_API_KEY` is present in `.env` file or exported in your shell
   - Verify the API key is valid and active
 
 - **"No contracts returned"**

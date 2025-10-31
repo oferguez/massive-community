@@ -32,7 +32,7 @@ import pandas as pd
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 from pathlib import Path
-from polygon import RESTClient
+from massive import RESTClient
 from dotenv import load_dotenv
 
 # Configuration
@@ -41,7 +41,7 @@ load_dotenv()
 
 class IronCondorScreener:
     def __init__(self):
-        # Polygon API setup
+        # Massive API setup
         
     def find_best_iron_condors(self, symbol, max_days=7):
         # 1. Fetch calls and puts for all expirations
@@ -132,7 +132,7 @@ name = "iron-condor-screener"
 version = "0.1.0"
 description = "Iron Condor Screener & Analyzer"
 dependencies = [
-    "polygon-api-client>=1.0.0",
+    "massive>=2.0.1",
     "pandas>=2.0.0",
     "python-dotenv>=1.0.0"
 ]
@@ -141,7 +141,7 @@ dependencies = [
 ## Environment Setup
 ```bash
 # .env file
-POLYGON_API_KEY=your_api_key_here
+MASSIVE_API_KEY=your_api_key_here
 ```
 
 ## Key Simplifications

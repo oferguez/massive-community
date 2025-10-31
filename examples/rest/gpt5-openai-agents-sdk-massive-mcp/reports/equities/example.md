@@ -10,7 +10,7 @@ As of: 2025-08-14
 
 Scope and method
 - Time horizon: trailing 1-year through 2025-08-14. Returns shown as price return and total return (price + cash dividends using ex-dates within the period). Intraday variations ignored; closes used.
-- Tickers: Meta Platforms (META), Microsoft (MSFT). Data: Polygon.io (aggregates, dividends), Benzinga (news, ratings, earnings).
+- Tickers: Meta Platforms (META), Microsoft (MSFT). Data: Massive (aggregates, dividends), Benzinga (news, ratings, earnings).
 
 1) Return on investment (trailing 1Y)
 META
@@ -71,7 +71,7 @@ Bottom line
 - For a barbell, holding both can balance META’s higher beta with MSFT’s stability and cash return.
 
 Data appendix (sources)
-- Prices/dividends: Polygon.io daily aggregates and dividends for META, MSFT (adjusted closes; 2024-08-14 to 2025-08-14).
+- Prices/dividends: Massive daily aggregates and dividends for META, MSFT (adjusted closes; 2024-08-14 to 2025-08-14).
 - Ratings: Benzinga consensus (latest snapshot).
 - Earnings: Benzinga projected schedules as of 2025-08-14.
 - News: Benzinga (3 headlines max per ticker; ~30-day window).

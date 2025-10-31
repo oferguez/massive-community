@@ -12,7 +12,7 @@ import pandas as pd
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 from pathlib import Path
-from polygon import RESTClient
+from massive import RESTClient
 from dotenv import load_dotenv
 
 # Configuration
@@ -24,7 +24,7 @@ class OptionsScreener:
     """Main class for options screening and P&L calculation."""
     
     def __init__(self):
-        self.client = RESTClient(api_key=os.getenv("POLYGON_API_KEY"))
+        self.client = RESTClient(api_key=os.getenv("MASSIVE_API_KEY"))
     
     def _today_et(self) -> datetime:
         """Get current time in Eastern Time."""

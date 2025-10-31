@@ -10,7 +10,7 @@ authors = [
 license = { file = "LICENSE" }
 dependencies = [
   "python-dotenv",
-  "polygon-api-client",
+  "massive",
   "pandas"
 ]
 
