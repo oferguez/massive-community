@@ -1,10 +1,10 @@
-# Market Parser with Polygon MCP Server
+# Market Parser with Massive MCP Server
 
 <div align="center">
   <img src="../../../images/logo.png" alt="Project Logo" width="100%"/>
 </div>
 
-A simple Python CLI for natural language financial queries using the [Polygon.io](https://polygon.io/) [MCP server](https://github.com/polygon-io/mcp_polygon) and Anthropic [Claude 4](https://www.anthropic.com/news/claude-4) via the [Pydantic AI Agent Framework](https://ai.pydantic.dev/agents/).
+A simple Python CLI for natural language financial queries using the [Massive](https://massive.com/) [MCP server](https://github.com/massive-com/mcp_massive) and Anthropic [Claude 4](https://www.anthropic.com/news/claude-4) via the [Pydantic AI Agent Framework](https://ai.pydantic.dev/agents/).
 
 ## Features
 
@@ -30,12 +30,12 @@ A simple Python CLI for natural language financial queries using the [Polygon.io
     ```
 
 2. **Get your API keys:**
-   - [Polygon.io API key](https://polygon.io/)
+   - [Massive API key](https://massive.com/)
    - [Anthropic API key (Claude)](https://console.anthropic.com/)
 
 3. **Create a `.env` file in the same directory as `market_parser_demo.py`:**
     ```
-    POLYGON_API_KEY=your_polygon_api_key_here
+    MASSIVE_API_KEY=your_massive_api_key_here
     ANTHROPIC_API_KEY=your_anthropic_api_key_here
     ```
     Both keys are required for the CLI to work.
@@ -67,7 +67,7 @@ For reference, this is the system prompt used with every query:
 
 ```
 system_prompt=(
-    "You are an expert financial analyst. Note that when using Polygon tools, prices are already stock split adjusted. "
+    "You are an expert financial analyst. Note that when using Massive tools, prices are already stock split adjusted. "
     "Use the latest data available. Always double check your math. "
     "For any questions about the current date, use the 'get_today_date' tool. "
     "For long or complex queries, break the query into logical subtasks and process each subtask in order."
@@ -81,9 +81,9 @@ Be speficific in your prompt. The better the prompt - the better the response.
 ## Troubleshooting
 
 - **Missing API Key:**  
-  If you see an error about `POLYGON_API_KEY` or `ANTHROPIC_API_KEY`, make sure your `.env` file is in the same directory and contains both keys:
+  If you see an error about `MASSIVE_API_KEY` or `ANTHROPIC_API_KEY`, make sure your `.env` file is in the same directory and contains both keys:
   ```
-  POLYGON_API_KEY=your_polygon_api_key_here
+  MASSIVE_API_KEY=your_massive_api_key_here
   ANTHROPIC_API_KEY=your_anthropic_api_key_here
   ```
 
@@ -110,8 +110,8 @@ AI Data can be incorrect. Like all LLM generated responses, please double check
 
 ## How it Works
 
-- Loads your Polygon and Anthropic API keys from `.env`
-- Starts the Polygon MCP server in the background
+- Loads your Massive and Anthropic API keys from `.env`
+- Starts the Massive MCP server in the background
 - Sends your natural language query to Anthropic Claude via PydanticAI
 - Prints the answer in a readable format
 

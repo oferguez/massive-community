@@ -4,7 +4,7 @@
   <img src="../../../images/logo.png" alt="Project Logo" width="100%"/>
 </div>
 
-An intelligent Python utility that automatically finds the best covered call options across all available expirations with sophisticated profitability analysis. This tool uses real-time market data from Polygon.io to identify optimal covered call opportunities with advanced metrics, smart filtering, and automatic P&L calculation.
+An intelligent Python utility that automatically finds the best covered call options across all available expirations with sophisticated profitability analysis. This tool uses real-time market data from Massive to identify optimal covered call opportunities with advanced metrics, smart filtering, and automatic P&L calculation.
 
 ## 🚀 Key Features
 
@@ -12,7 +12,7 @@ An intelligent Python utility that automatically finds the best covered call opt
 - **🎯 Smart Filtering**: Adapts filters based on symbol type (ETFs vs individual stocks)
 - **📊 Auto P&L Calculation**: Automatically fetches closing prices and calculates P&L
 - **⚡ Simple Interface**: Just two commands for complete workflow
-- **📈 Real-time Data**: Live options chain data from Polygon.io
+- **📈 Real-time Data**: Live options chain data from Massive
 - **🎲 Probability Analysis**: Black-Scholes probability of profit calculations
 - **🧮 Advanced Metrics**: 7 sophisticated profitability metrics for optimal trade selection
 - **📋 Multiple Rankings**: Options ranked by 7 different criteria for various strategies
@@ -25,7 +25,7 @@ An intelligent Python utility that automatically finds the best covered call opt
 
 - Python 3.10+
 - `uv` package manager (recommended) or `pip`
-- Polygon.io API key (**Must be on Options Advanced license type**)
+- Massive API key (**Must be on Options Advanced license type**)
 
 ## ⚙️ Setup
 
@@ -47,11 +47,11 @@ An intelligent Python utility that automatically finds the best covered call opt
 3. **Set up environment variables**:
    ```bash
    cp env.example .env
-   # Edit .env and add your Polygon API key
+   # Edit .env and add your Massive API key
    ```
 
-4. **Get a Polygon.io API key**:
-   - Visit [polygon.io](https://polygon.io/)
+4. **Get a Massive API key**:
+   - Visit [massive.com](https://massive.com/)
    - Sign up for an account
    - Upgrade to Options Advanced
    - Copy your API key to the `.env` file
@@ -397,7 +397,7 @@ The tool is perfect for systematic backtesting:
 
 ## 🔧 Environment Variables
 
-- `POLYGON_API_KEY` (required): Your Polygon.io API key
+- `MASSIVE_API_KEY` (required): Your Massive API key
 
 ## 📄 License
 

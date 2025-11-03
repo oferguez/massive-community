@@ -73,3 +73,5 @@ coverage.xml
 scripts/
 .log
 .DS_Store
+data/
+reports/
