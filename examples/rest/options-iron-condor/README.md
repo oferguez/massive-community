@@ -40,6 +40,7 @@ The strategy profits when the stock price stays between the two sold strikes at 
 
 - Python 3.10 or higher
 - Massive API key (**Must be on Options Advanced license type**)
+- `massive` Python client v2.0.2 or later (installed via this project's dependencies)
 
 ### Installation
 
@@ -127,6 +128,8 @@ The `pnl` command calculates actual performance after expiration:
 ```bash
 uv run screener.py pnl --csv <path-to-csv>
 ```
+
+By default, the screener pulls the official Massive close for each expiration date before computing results. Pass `--closing-price` to override the fetched value (e.g., to use a custom settlement price across all rows).
 
 **Example:**
 ```bash
@@ -306,6 +309,12 @@ Contributions are welcome! Please feel free to submit issues, feature requests, 
 3. Make your changes
 4. Test thoroughly
 5. Submit a pull request
+
+### Running Tests
+
+```bash
+uv run python -m unittest discover tests
+```
 
 ## 📄 License
 

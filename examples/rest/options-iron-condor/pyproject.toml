@@ -10,7 +10,7 @@ authors = [
 license = { file = "LICENSE" }
 dependencies = [
   "python-dotenv>=1.0.0",
-  "massive>=2.0.1",
+  "massive>=2.0.2",
   "pandas>=2.0.0",
   "numpy>=1.24.0"
 ]
