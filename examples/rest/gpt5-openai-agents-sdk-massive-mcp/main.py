@@ -88,7 +88,7 @@ def create_massive_mcp_server():
         raise Exception("MASSIVE_API_KEY not set in environment.")
     return MCPServerStdio(params={
         "command": "uvx",
-        "args": ["--from", "git+https://github.com/massive-com/mcp_massive@v0.6.0", "mcp_massive"],
+        "args": ["--from", "git+https://github.com/massive-com/mcp_massive@v0.7.0", "mcp_massive"],
         "env": {**os.environ, "MASSIVE_API_KEY": api_key}
     })
 
@@ -163,7 +163,7 @@ async def cli_async():
                                 mcp_servers=[server],
                                 tools=[save_analysis_report],
                                 input_guardrails=[InputGuardrail(guardrail_function=finance_guardrail)],
-                                model=OpenAIResponsesModel(model="gpt-5", openai_client=AsyncOpenAI()),
+                                model=OpenAIResponsesModel(model="gpt-5.1", openai_client=AsyncOpenAI()),
                                 model_settings = ModelSettings(truncation="auto")
                             )
                             output = await Runner.run(analysis_agent, user_input, session=session)
