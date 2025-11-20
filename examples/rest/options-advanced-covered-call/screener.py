@@ -621,7 +621,7 @@ def main():
             
             print(f"\n🎯 Top Recommendation: Sell the {top_option['expiration']} ${top_option['strike']} call for ${top_option['mid']:.3f}")
             print(f"   Premium Yield: {top_option['premium_yield']*100:.2f}% | PoP: {top_option['pop_est']*100:.1f}% | Delta: {top_option['delta']:.3f}")
-            print(f"\n💡 Next step: Run 'python screener.py pnl --csv {output_path}' after expiration")
+            print(f"\n💡 Next step: Run 'uv run screener.py pnl --csv {output_path}' after expiration")
             print(f"\n📋 Other ranking criteria available:")
             print(f"   • Premium: Highest income potential")
             print(f"   • Probability: Safest options (least likely to be assigned)")
@@ -630,7 +630,7 @@ def main():
             print(f"   • Expected Value: Best mathematical edge (most profitable long-term)")
             print(f"   • Profitable: Advanced risk-adjusted scoring (current selection)")
             print(f"   • Aggressive: High premium + capital efficiency")
-            print(f"\n💡 To use a different criteria, run: python screener.py find --criteria [criteria_name]")
+            print(f"\n💡 To use a different criteria, run: uv run screener.py find --criteria [criteria_name]")
         else:
             print(f"\n❌ No suitable options found for {args.symbol}")
             print("💡 Try different symbol or increase --max-days")

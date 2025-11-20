@@ -24,24 +24,23 @@ An intelligent Python utility that automatically finds the best covered call opt
 ## 📋 Requirements
 
 - Python 3.10+
-- `uv` package manager (recommended) or `pip`
+- [uv](https://github.com/astral-sh/uv) package manager
+  ```bash
+  curl -Ls https://astral.sh/uv/install.sh | sh
+  ```
 - Massive API key (**Must be on Options Advanced license type**)
 
-## ⚙️ Setup
+## Quickstart (with [uv](https://github.com/astral-sh/uv))
 
 1. **Clone the repository**:
    ```bash
-   git clone <repository-url>
-   cd 0dte_closed
+   git clone https://github.com/massive-com/community.git
+   cd community/examples/rest/options-advanced-covered-call
    ```
 
 2. **Install dependencies**:
    ```bash
-   # Using uv (recommended)
    uv sync
-   
-   # Or using pip
-   pip install -e .
    ```
 
 3. **Set up environment variables**:
@@ -126,7 +125,7 @@ uv run screener.py find --symbol TSLA --max-options 3
 🎯 Top Recommendation: Sell the 2025-09-22 $665 call for $1.540
    Premium Yield: 0.23% | PoP: 57.3% | Delta: 0.296
 
-💡 Next step: Run 'python screener.py pnl --csv data/spy_profitable_options.csv' after expiration
+💡 Next step: Run 'uv run screener.py pnl --csv data/spy_profitable_options.csv' after expiration
 
 📋 Other ranking criteria available:
    • Premium: Highest income potential
@@ -137,7 +136,7 @@ uv run screener.py find --symbol TSLA --max-options 3
    • Profitable: Advanced risk-adjusted scoring (current selection)
    • Aggressive: High premium + capital efficiency
 
-💡 To use a different criteria, run: python screener.py find --criteria [criteria_name]
+💡 To use a different criteria, run: uv run screener.py find --criteria [criteria_name]
 
 **CSV Output:** The tool saves one CSV file per run based on your selected criteria, containing all the top options with advanced metrics. Each file includes:
 - All basic metrics (premium, delta, PoP, etc.)
