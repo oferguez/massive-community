@@ -24,28 +24,35 @@ A simple Python CLI for natural language financial queries using the [Massive](h
 
 ## Quickstart (with [uv](https://github.com/astral-sh/uv))
 
-1. **Install [uv](https://github.com/astral-sh/uv) if you don’t have it:**
+1. **Install uv:**
     ```sh
     curl -Ls https://astral.sh/uv/install.sh | sh
     ```
 
-2. **Get your API keys:**
-   - [Massive API key](https://massive.com/)
-   - [Anthropic API key (Claude)](https://console.anthropic.com/)
+2. **Clone the repo & enter this example:**
+    ```sh
+    git clone https://github.com/massive-com/community.git
+    cd community/examples/rest/market-parser-massive-mcp
+    ```
 
-3. **Create a `.env` file in the same directory as `market_parser_demo.py`:**
+3. **Create a `.env` beside `market_parser_demo.py`:**
     ```
     MASSIVE_API_KEY=your_massive_api_key_here
     ANTHROPIC_API_KEY=your_anthropic_api_key_here
     ```
     Both keys are required for the CLI to work.
 
-4. **Run the CLI (dependencies will be auto-installed from `pyproject.toml`):**
+4. **Sync dependencies:**
+    ```sh
+    uv sync
+    ```
+
+5. **Run the CLI:**
     ```sh
     uv run market_parser_demo.py
     ```
 
-5. **Type your question and press Enter!**  
+6. **Type your question and press Enter!**  
    Type `exit` to quit.
 
 ---
@@ -88,16 +95,7 @@ Be speficific in your prompt. The better the prompt - the better the response.
   ```
 
 - **Dependencies:**  
-  If you get `ModuleNotFoundError`, make sure your `pyproject.toml` lists:
-    - `python-dotenv`
-    - `rich`
-    - `pydantic_ai`
-
-  If you prefer, you can use pip instead:
-  ```sh
-  pip install python-dotenv rich pydantic_ai
-  python market_parser_demo.py
-  ```
+  If you get `ModuleNotFoundError`, rerun `uv sync` to rebuild the environment, then execute `uv run market_parser_demo.py` again.
 
 - **Incorrect Responses**
 AI Data can be incorrect. Like all LLM generated responses, please double check 

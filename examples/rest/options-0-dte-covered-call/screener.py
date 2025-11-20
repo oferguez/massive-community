@@ -11,6 +11,27 @@ ET = ZoneInfo("America/New_York")
 # Load environment variables from .env file
 load_dotenv()
 
+
+def parse_range(value: str | None):
+    """Parse CLI range input of form 'min,max' (empty entries mean unbounded)."""
+    if value is None:
+        return None
+    parts = [p.strip() for p in value.split(",")]
+    if len(parts) != 2:
+        raise argparse.ArgumentTypeError("Range must be formatted as min,max")
+    def to_float(x: str):
+        if x == "":
+            return None
+        try:
+            return float(x)
+        except ValueError as exc:
+            raise argparse.ArgumentTypeError("Range values must be numeric") from exc
+    lo = to_float(parts[0])
+    hi = to_float(parts[1])
+    if lo is not None and hi is not None and lo > hi:
+        raise argparse.ArgumentTypeError("Range min cannot exceed max")
+    return (lo, hi)
+
 def make_client():
     return RESTClient(api_key=os.getenv("MASSIVE_API_KEY"))
 
@@ -66,6 +87,19 @@ def pop_estimate(S0: float, breakeven: float, iv: float | None, t_years: float) 
     d2 = (math.log(S0 / breakeven) - 0.5 * (iv ** 2) * t_years) / (iv * math.sqrt(t_years))
     return norm_cdf(d2)
 
+def in_range(value, bounds):
+    if bounds is None:
+        return True
+    if value is None:
+        return False
+    lo, hi = bounds
+    if lo is not None and value < lo:
+        return False
+    if hi is not None and value > hi:
+        return False
+    return True
+
+
 def screen_candidates(chain,
                       spot: float,
                       expiration_date: str,
@@ -75,11 +109,19 @@ def screen_candidates(chain,
                       delta_hi=0.35,
                       min_bid=0.05,
                       min_oi=1,
+                      min_volume=0,
                       max_spread_to_mid=0.75,
+                      min_premium_yield=0.0,
+                      iv_range=None,
+                      minutes_limit=None,
+                      capital_limit=None,
                       rank_metric="premium_yield"):
     lo = spot * (1 + min_otm_pct)
     hi = spot * (1 + max_otm_pct) if max_otm_pct else float("inf")
     t_years = time_to_expiry_years(expiration_date)
+    minutes_left = minutes_to_close_on(expiration_date)
+    if minutes_limit is not None and minutes_left > minutes_limit:
+        return []
 
     rows = []
     for o in chain:
@@ -88,6 +130,8 @@ def screen_candidates(chain,
         g = getattr(o, "greeks", None)
         oi = getattr(o, "open_interest", 0) or 0
         iv = getattr(o, "implied_volatility", None)
+        day_stats = getattr(o, "day", None)
+        volume = getattr(day_stats, "volume", None) or 0
 
         if not d or not q:
             continue
@@ -103,6 +147,8 @@ def screen_candidates(chain,
         m = midpoint(bid, ask)
         if m is None or m <= 0:
             continue
+        if m > 0 and (m / spot) < min_premium_yield:
+            continue
 
         spread = ask - bid
         if m > 0 and (spread / m) > max_spread_to_mid:
@@ -115,10 +161,19 @@ def screen_candidates(chain,
             delta_ok = (delta_lo <= delta_val <= delta_hi)
         if not delta_ok:
             continue
+        if not in_range(iv, iv_range):
+            continue
+        if volume < min_volume or oi < min_oi:
+            continue
+
+        capital_required = spot * 100.0
+        if capital_limit is not None and capital_required > capital_limit:
+            continue
 
         breakeven = spot - m
         max_profit = (k - spot) + m
         pop = pop_estimate(spot, breakeven, iv, t_years)
+        spread_pct = spread / m if m else None
 
         rows.append({
             "ticker": d.ticker,
@@ -128,13 +183,17 @@ def screen_candidates(chain,
             "bid": bid,
             "ask": ask,
             "mid": m,
+            "spread_pct": spread_pct,
             "open_interest": oi,
+            "volume": volume,
             "iv": iv,
             "spot": spot,
             "premium_yield": m / spot,
             "breakeven": breakeven,
             "max_profit": max_profit,
             "pop_est": pop,
+            "minutes_to_expiry": minutes_left,
+            "capital_required": capital_required,
         })
 
     if rank_metric == "premium_yield":
@@ -194,7 +253,14 @@ def main():
     sc.add_argument("--delta-hi", type=float, default=0.35)
     sc.add_argument("--min-bid", type=float, default=0.05)
     sc.add_argument("--min-open-interest", type=int, default=1)
+    sc.add_argument("--min-volume", type=int, default=0)
     sc.add_argument("--max-spread-to-mid", type=float, default=0.75)
+    sc.add_argument("--min-premium-yield", type=float, default=0.0, help="Minimum premium / spot (e.g., 0.33 for 33%)")
+    sc.add_argument("--iv-range", type=parse_range, help="Filter implied volatility range (e.g., 0.2,0.6)")
+    sc.add_argument("--max-minutes-to-expiry", type=float, help="Skip expirations with more minutes remaining than this value")
+    sc.add_argument("--account-size", type=float, help="Account size for capital percentage checks")
+    sc.add_argument("--max-capital-pct", type=float, default=5.0, help="Max percent of account per covered call (default 5%%)")
+    sc.add_argument("--max-capital", type=float, help="Absolute USD cap per covered call (per 100 shares)")
     sc.add_argument("--rank-metric", choices=["premium_yield", "max_profit", "pop_est"], default="premium_yield")
     sc.add_argument("--outdir", default="./data")
 
@@ -213,6 +279,16 @@ def main():
         spot = resolve_spot(chain, client, args.symbol)
         if spot is None:
             raise SystemExit("Could not resolve underlying spot.")
+
+        capital_limit = None
+        pct_limit = None
+        if args.account_size and args.max_capital_pct:
+            pct_limit = args.account_size * (args.max_capital_pct / 100.0)
+        if args.max_capital:
+            capital_limit = args.max_capital
+        if pct_limit is not None:
+            capital_limit = min(capital_limit, pct_limit) if capital_limit is not None else pct_limit
+
         rows = screen_candidates(
             chain,
             spot,
@@ -223,12 +299,38 @@ def main():
             delta_hi=args.delta_hi,
             min_bid=args.min_bid,
             min_oi=args.min_open_interest,
+            min_volume=args.min_volume,
             max_spread_to_mid=args.max_spread_to_mid,
+            min_premium_yield=args.min_premium_yield,
+            iv_range=args.iv_range,
+            minutes_limit=args.max_minutes_to_expiry,
+            capital_limit=capital_limit,
             rank_metric=args.rank_metric,
         )
         if not rows:
             raise SystemExit("No candidates passed the filters.")
-        path = save_csv(rows, args.outdir, args.symbol, exp)
+        filter_info = {
+            "filter_symbol": args.symbol,
+            "filter_expiration_days": args.expiration_days,
+            "filter_min_otm_pct": args.min_otm_pct,
+            "filter_max_otm_pct": args.max_otm_pct,
+            "filter_delta_lo": args.delta_lo,
+            "filter_delta_hi": args.delta_hi,
+            "filter_min_bid": args.min_bid,
+            "filter_min_open_interest": args.min_open_interest,
+            "filter_min_volume": args.min_volume,
+            "filter_max_spread_to_mid": args.max_spread_to_mid,
+            "filter_min_premium_yield": args.min_premium_yield,
+            "filter_iv_range": args.iv_range if args.iv_range else "",
+            "filter_max_minutes_to_expiry": args.max_minutes_to_expiry if args.max_minutes_to_expiry is not None else "",
+            "filter_account_size": args.account_size if args.account_size is not None else "",
+            "filter_max_capital_pct": args.max_capital_pct if args.account_size else "",
+            "filter_max_capital": args.max_capital if args.max_capital is not None else "",
+            "filter_capital_limit": capital_limit if capital_limit is not None else "",
+            "filter_rank_metric": args.rank_metric,
+        }
+        rows_with_filters = [{**row, **filter_info} for row in rows]
+        path = save_csv(rows_with_filters, args.outdir, args.symbol, exp)
         print(f"Wrote {len(rows)} rows to {path}")
 
     elif args.cmd == "mark":

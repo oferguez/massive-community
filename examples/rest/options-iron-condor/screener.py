@@ -28,6 +28,37 @@ MAX_SPREAD_PCT = 0.08
 MAX_SPREAD_ABS = 50.0
 MIN_SPREAD_ABS = 0.5
 
+
+def parse_range(value: Optional[str]) -> Optional[Tuple[Optional[float], Optional[float]]]:
+    """Parse CLI range strings formatted as 'min,max'."""
+    if value is None:
+        return None
+    parts = [p.strip() for p in value.split(",")]
+    if len(parts) != 2:
+        raise argparse.ArgumentTypeError("Range must be formatted as min,max")
+    try:
+        low = float(parts[0]) if parts[0] else None
+        high = float(parts[1]) if parts[1] else None
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("Range values must be numeric") from exc
+    if low is not None and high is not None and low > high:
+        raise argparse.ArgumentTypeError("Range min cannot exceed max")
+    return (low, high)
+
+
+def value_in_range(value: Optional[float], bounds: Optional[Tuple[Optional[float], Optional[float]]]) -> bool:
+    """Utility to determine whether a value satisfies optional range bounds."""
+    if bounds is None:
+        return True
+    if value is None:
+        return False
+    low, high = bounds
+    if low is not None and value < low:
+        return False
+    if high is not None and value > high:
+        return False
+    return True
+
 @dataclass
 class IronCondor:
     """Represents an iron condor strategy"""
@@ -42,6 +73,27 @@ class IronCondor:
     risk_reward_ratio: float
     days_to_expiration: int
     spot_price: float
+    credit_ratio: float
+    call_sell_delta: Optional[float] = None
+    call_sell_theta: Optional[float] = None
+    call_sell_iv: Optional[float] = None
+    call_sell_volume: Optional[int] = None
+    call_sell_open_interest: Optional[int] = None
+    call_buy_delta: Optional[float] = None
+    call_buy_theta: Optional[float] = None
+    call_buy_iv: Optional[float] = None
+    call_buy_volume: Optional[int] = None
+    call_buy_open_interest: Optional[int] = None
+    put_sell_delta: Optional[float] = None
+    put_sell_theta: Optional[float] = None
+    put_sell_iv: Optional[float] = None
+    put_sell_volume: Optional[int] = None
+    put_sell_open_interest: Optional[int] = None
+    put_buy_delta: Optional[float] = None
+    put_buy_theta: Optional[float] = None
+    put_buy_iv: Optional[float] = None
+    put_buy_volume: Optional[int] = None
+    put_buy_open_interest: Optional[int] = None
 
 class IronCondorScreener:
     def __init__(self, client: Optional[RESTClient] = None, api_key: Optional[str] = None):
@@ -159,6 +211,19 @@ class IronCondorScreener:
                 if not exp_date or str(exp_date) != expiration:
                     continue
                 
+                delta = None
+                theta = None
+                greeks = getattr(option, 'greeks', None)
+                if greeks:
+                    try:
+                        delta = float(getattr(greeks, 'delta', None))
+                    except (TypeError, ValueError):
+                        delta = None
+                    try:
+                        theta = float(getattr(greeks, 'theta', None))
+                    except (TypeError, ValueError):
+                        theta = None
+
                 option_data = {
                     'strike': float(option.details.strike_price) if option.details.strike_price else 0.0,
                     'bid': float(option.last_quote.bid) if option.last_quote and option.last_quote.bid else 0.0,
@@ -166,6 +231,8 @@ class IronCondorScreener:
                     'volume': int(option.day.volume) if option.day and option.day.volume else 0,
                     'open_interest': int(option.open_interest) if option.open_interest else 0,
                     'implied_volatility': self._extract_implied_volatility(option),
+                    'delta': delta,
+                    'theta': theta,
                 }
                 
                 if option.details.contract_type == "call":
@@ -266,9 +333,17 @@ class IronCondorScreener:
         cdf = 0.5 * (1 + math.erf(-d2 / math.sqrt(2)))
         return max(0.0, min(1.0, cdf))
     
-    def construct_iron_condors(self, symbol: str, spot_price: float, 
-                             options_chain: Dict, expiration: str,
-                             min_vol: int = 5, min_oi: int = 25) -> List[IronCondor]:
+    def construct_iron_condors(
+        self,
+        symbol: str,
+        spot_price: float,
+        options_chain: Dict,
+        expiration: str,
+        min_vol: int = 5,
+        min_oi: int = 25,
+        greek_filters: Optional[Dict[str, Optional[Tuple[Optional[float], Optional[float]]]]] = None,
+        iv_range: Optional[Tuple[Optional[float], Optional[float]]] = None,
+    ) -> List[IronCondor]:
         """Construct all possible iron condors from options chain"""
         iron_condors = []
         calls = options_chain['calls']
@@ -331,6 +406,19 @@ class IronCondorScreener:
         
         put_candidates_desc = list(reversed(put_candidates))
         
+        greek_filters = greek_filters or {}
+        short_delta_range = greek_filters.get("short_delta")
+        long_delta_range = greek_filters.get("long_delta")
+        short_theta_range = greek_filters.get("short_theta")
+        long_theta_range = greek_filters.get("long_theta")
+
+        def leg_passes(option: Dict, delta_bounds, theta_bounds) -> bool:
+            return (
+                value_in_range(option.get('delta'), delta_bounds)
+                and value_in_range(option.get('theta'), theta_bounds)
+                and value_in_range(option.get('implied_volatility'), iv_range)
+            )
+
         # Find iron condor combinations (optimized)
         combinations_checked = 0
         for i, call_sell in enumerate(call_candidates):
@@ -338,11 +426,19 @@ class IronCondorScreener:
                 call_spread_width = call_buy['strike'] - call_sell['strike']
                 if call_spread_width <= 0 or call_spread_width > max_spread_width:
                     continue
+                if not leg_passes(call_sell, short_delta_range, short_theta_range):
+                    continue
+                if not leg_passes(call_buy, long_delta_range, long_theta_range):
+                    continue
                 
                 for k, put_sell in enumerate(put_candidates_desc):
                     for l, put_buy in enumerate(put_candidates_desc[k+1:], k+1):  # Lower strikes
                         put_spread_width = put_sell['strike'] - put_buy['strike']
                         if put_spread_width <= 0 or put_spread_width > max_spread_width:
+                            continue
+                        if not leg_passes(put_sell, short_delta_range, short_theta_range):
+                            continue
+                        if not leg_passes(put_buy, long_delta_range, long_theta_range):
                             continue
                         
                         combinations_checked += 1
@@ -374,6 +470,7 @@ class IronCondorScreener:
                         
                         if max_loss <= 0:
                             continue
+                        credit_ratio = round(net_credit / widest_spread, 4) if widest_spread > 0 else 0.0
                         
                         vol_candidates = [
                             call_sell.get('implied_volatility'),
@@ -417,7 +514,28 @@ class IronCondorScreener:
                             probability_of_profit=round(prob_in_zone * 100, 1),
                             risk_reward_ratio=round(risk_reward, 2),
                             days_to_expiration=days_to_exp,
-                            spot_price=spot_price
+                            spot_price=spot_price,
+                            credit_ratio=credit_ratio,
+                            call_sell_delta=call_sell.get('delta'),
+                            call_sell_theta=call_sell.get('theta'),
+                            call_sell_iv=call_sell.get('implied_volatility'),
+                            call_sell_volume=call_sell.get('volume'),
+                            call_sell_open_interest=call_sell.get('open_interest'),
+                            call_buy_delta=call_buy.get('delta'),
+                            call_buy_theta=call_buy.get('theta'),
+                            call_buy_iv=call_buy.get('implied_volatility'),
+                            call_buy_volume=call_buy.get('volume'),
+                            call_buy_open_interest=call_buy.get('open_interest'),
+                            put_sell_delta=put_sell.get('delta'),
+                            put_sell_theta=put_sell.get('theta'),
+                            put_sell_iv=put_sell.get('implied_volatility'),
+                            put_sell_volume=put_sell.get('volume'),
+                            put_sell_open_interest=put_sell.get('open_interest'),
+                            put_buy_delta=put_buy.get('delta'),
+                            put_buy_theta=put_buy.get('theta'),
+                            put_buy_iv=put_buy.get('implied_volatility'),
+                            put_buy_volume=put_buy.get('volume'),
+                            put_buy_open_interest=put_buy.get('open_interest')
                         )
                         
                         iron_condors.append(iron_condor)
@@ -430,13 +548,27 @@ class IronCondorScreener:
         self.log(f"Constructed {len(iron_condors)} iron condors from {combinations_checked} combinations")
         return iron_condors
     
-    def find_best_iron_condors(self, symbol: str, max_days: int = 7, 
-                             min_net_credit: float = 0.10, max_risk: float = 10.00,
-                             min_probability: float = 30.0, limit: int = 10,
-                             min_vol: int = 5, min_oi: int = 25) -> Tuple[List[IronCondor], bool]:
+    def find_best_iron_condors(
+        self,
+        symbol: str,
+        max_days: int = 7,
+        min_days: int = 5,
+        min_net_credit: float = 0.10,
+        max_risk: float = 10.00,
+        min_probability: float = 30.0,
+        limit: int = 10,
+        min_vol: int = 5,
+        min_oi: int = 25,
+        greek_filters: Optional[Dict[str, Optional[Tuple[Optional[float], Optional[float]]]]] = None,
+        iv_range: Optional[Tuple[Optional[float], Optional[float]]] = None,
+        min_credit_ratio: float = 0.0,
+        capital_limit: Optional[float] = None,
+    ) -> Tuple[List[IronCondor], List[IronCondor], bool]:
         """Find the best iron condor opportunities"""
         print(f"🔍 Scanning {symbol} for iron condor opportunities...")
         
+        max_days = max(max_days, min_days)
+
         # Get current price
         spot_price = self.get_current_price(symbol)
         if spot_price == 0:
@@ -456,12 +588,13 @@ class IronCondorScreener:
         # Filter expirations by date
         today = datetime.now(ET).date()
         end_date = today + timedelta(days=max_days)
+        min_date = today + timedelta(days=max(min_days, 0))
         
         valid_expirations = []
         for exp_str in grouped_options.keys():
             try:
                 exp_date = datetime.fromisoformat(exp_str).date()
-                if today <= exp_date <= end_date:
+                if min_date <= exp_date <= end_date:
                     valid_expirations.append(exp_str)
             except:
                 continue
@@ -485,7 +618,16 @@ class IronCondorScreener:
                 self.log(f"No options found for {expiration}")
                 return []
             
-            return self.construct_iron_condors(symbol, spot_price, options_chain, expiration, min_vol, min_oi)
+            return self.construct_iron_condors(
+                symbol,
+                spot_price,
+                options_chain,
+                expiration,
+                min_vol,
+                min_oi,
+                greek_filters=greek_filters,
+                iv_range=iv_range,
+            )
 
         # Use ThreadPoolExecutor for concurrent processing (CPU bound now, but still good for separation)
         with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
@@ -498,25 +640,56 @@ class IronCondorScreener:
                     self.log(f"Error processing expiration: {e}")
         
         # Filter iron condors
-        filtered_condors = [
-            ic for ic in all_iron_condors
-            if ic.net_credit >= min_net_credit 
-            and ic.max_loss <= max_risk
-            and ic.probability_of_profit >= min_probability
-        ]
+        filtered_condors = []
+        contract_multiplier = 100
+        capital_limit = capital_limit if capital_limit and capital_limit > 0 else None
+        min_credit_ratio = max(min_credit_ratio, 0.0)
+
+        for ic in all_iron_condors:
+            spread_width = ic.max_loss + ic.net_credit
+            credit_ratio = ic.credit_ratio if ic.credit_ratio else (ic.net_credit / spread_width if spread_width else 0.0)
+            per_contract_risk = ic.max_loss * contract_multiplier
+
+            if ic.net_credit < min_net_credit:
+                continue
+            if ic.max_loss > max_risk:
+                continue
+            if ic.probability_of_profit < min_probability:
+                continue
+            if min_credit_ratio and credit_ratio < min_credit_ratio:
+                continue
+            if capital_limit and per_contract_risk > capital_limit:
+                continue
+
+            filtered_condors.append(ic)
         
-        print(f"🎯 Using filters: {{'min_net_credit': {min_net_credit}, 'max_risk': {max_risk}, 'min_probability': {min_probability}%}}")
+        filter_summary = {
+            'min_net_credit': min_net_credit,
+            'max_risk': max_risk,
+            'min_probability': f"{min_probability}%",
+        }
+        if min_credit_ratio:
+            filter_summary['min_credit_ratio'] = min_credit_ratio
+        if capital_limit:
+            filter_summary['max_capital_per_condor'] = capital_limit
+        print(f"🎯 Using filters: {filter_summary}")
         print(f"🏆 Found {len(filtered_condors)} total iron condors")
         
+        csv_condors: List[IronCondor] = []
+        display_condors: List[IronCondor] = []
+
         # Rank and limit results
         if filtered_condors:
             # Sort by net credit (highest first)
             filtered_condors.sort(key=lambda x: x.net_credit, reverse=True)
-            # Limit to top N results
-            filtered_condors = filtered_condors[:limit]
-            print(f"📊 Showing top {len(filtered_condors)} iron condors (ranked by net credit)")
+            csv_condors = list(filtered_condors)
+            # Limit to top N for terminal display
+            display_condors = filtered_condors[:limit]
+            print(f"📊 Showing top {len(display_condors)} iron condors (ranked by net credit)")
+        else:
+            print("📊 Showing top 0 iron condors (ranked by net credit)")
         
-        return filtered_condors, has_earnings
+        return display_condors, csv_condors, has_earnings
     
     def display_results(self, iron_condors: List[IronCondor], criteria: str = "credit"):
         """Display iron condor results"""
@@ -535,9 +708,9 @@ class IronCondorScreener:
             sorted_condors = iron_condors
         
         print(f"\n📊 Top {len(iron_condors)} by {criteria.title()} (highest first):")
-        print("   " + "=" * 100)
-        print("   Exp        Call Spread    Put Spread    Net Credit  Max Profit  Max Loss   PoP%   Risk/Reward")
-        print("   " + "-" * 100)
+        print("   " + "=" * 120)
+        print("   Exp        Call Spread    Put Spread    Net Credit  Max Profit  Max Loss   PoP%   Risk/Reward  Credit%")
+        print("   " + "-" * 120)
         
         for ic in sorted_condors[:5]:
             call_spread = f"${ic.call_spread[0]:.0f}/${ic.call_spread[1]:.0f}"
@@ -545,7 +718,7 @@ class IronCondorScreener:
             exp_short = ic.expiration.split('-')[1] + '-' + ic.expiration.split('-')[2]
             
             print(f"   {exp_short:<10} {call_spread:<12} {put_spread:<12} ${ic.net_credit:<9.2f} "
-                  f"${ic.max_profit:<9.2f} ${ic.max_loss:<8.2f} {ic.probability_of_profit:<6.1f}% {ic.risk_reward_ratio:<10.2f}")
+                  f"${ic.max_profit:<9.2f} ${ic.max_loss:<8.2f} {ic.probability_of_profit:<6.1f}% {ic.risk_reward_ratio:<10.2f} {ic.credit_ratio*100:<8.1f}%")
     
     def save_to_csv(self, iron_condors: List[IronCondor], symbol: str, has_earnings: bool = False) -> str:
         """Save iron condors to CSV file"""
@@ -570,6 +743,27 @@ class IronCondorScreener:
                 'risk_reward_ratio': ic.risk_reward_ratio,
                 'days_to_expiration': ic.days_to_expiration,
                 'spot_price': ic.spot_price,
+                'credit_ratio': ic.credit_ratio,
+                'call_sell_delta': ic.call_sell_delta,
+                'call_sell_theta': ic.call_sell_theta,
+                'call_sell_iv': ic.call_sell_iv,
+                'call_sell_volume': ic.call_sell_volume,
+                'call_sell_open_interest': ic.call_sell_open_interest,
+                'call_buy_delta': ic.call_buy_delta,
+                'call_buy_theta': ic.call_buy_theta,
+                'call_buy_iv': ic.call_buy_iv,
+                'call_buy_volume': ic.call_buy_volume,
+                'call_buy_open_interest': ic.call_buy_open_interest,
+                'put_sell_delta': ic.put_sell_delta,
+                'put_sell_theta': ic.put_sell_theta,
+                'put_sell_iv': ic.put_sell_iv,
+                'put_sell_volume': ic.put_sell_volume,
+                'put_sell_open_interest': ic.put_sell_open_interest,
+                'put_buy_delta': ic.put_buy_delta,
+                'put_buy_theta': ic.put_buy_theta,
+                'put_buy_iv': ic.put_buy_iv,
+                'put_buy_volume': ic.put_buy_volume,
+                'put_buy_open_interest': ic.put_buy_open_interest,
                 'has_upcoming_earnings': has_earnings,
                 'timestamp': datetime.now(ET).isoformat()
             })
@@ -715,11 +909,21 @@ def main():
     find_parser = subparsers.add_parser('find', help='Find iron condor opportunities')
     find_parser.add_argument('--symbol', required=True, help='Stock symbol (e.g., SPY)')
     find_parser.add_argument('--max-days', type=int, default=7, help='Maximum days to expiration - default: 7')
+    find_parser.add_argument('--min-days', type=int, default=5, help='Minimum days to expiration - default: 5')
     find_parser.add_argument('--min-credit', type=float, default=0.10, help='Minimum net credit - default: 0.10')
     find_parser.add_argument('--max-risk', type=float, default=10.00, help='Maximum risk - default: 10.00')
     find_parser.add_argument('--min-probability', type=float, default=30.0, help='Minimum probability of profit percent - default: 30.0')
     find_parser.add_argument('--min-vol', type=int, default=5, help='Minimum volume per option - default: 5')
     find_parser.add_argument('--min-oi', type=int, default=25, help='Minimum open interest per option - default: 25')
+    find_parser.add_argument('--short-delta-range', type=parse_range, help='Delta range for short legs (e.g., -0.35,-0.15)')
+    find_parser.add_argument('--long-delta-range', type=parse_range, help='Delta range for long legs (e.g., -0.1,0.1)')
+    find_parser.add_argument('--short-theta-range', type=parse_range, help='Theta range for short legs')
+    find_parser.add_argument('--long-theta-range', type=parse_range, help='Theta range for long legs')
+    find_parser.add_argument('--iv-range', type=parse_range, help='Implied volatility range (applied to every leg)')
+    find_parser.add_argument('--min-credit-ratio', type=float, default=0.0, help='Minimum credit / spread width (0 - 1)')
+    find_parser.add_argument('--account-size', type=float, help='Account size in USD for capital % calculations')
+    find_parser.add_argument('--max-capital-pct', type=float, default=5.0, help='Max percent of account per condor (default: 5%% when account size is set)')
+    find_parser.add_argument('--max-capital', type=float, help='Absolute USD cap per condor (per contract risk)')
     find_parser.add_argument('--criteria', choices=['credit', 'probability', 'risk_reward'], 
                            default='credit', help='Ranking criteria - default: credit')
     find_parser.add_argument('--limit', type=int, default=10, help='Maximum number of iron condors to save to CSV - default: 10')
@@ -739,30 +943,53 @@ def main():
         screener = IronCondorScreener()
         
         if args.command == 'find':
-            iron_condors, has_earnings = screener.find_best_iron_condors(
+            greek_filters = {
+                "short_delta": args.short_delta_range,
+                "long_delta": args.long_delta_range,
+                "short_theta": args.short_theta_range,
+                "long_theta": args.long_theta_range,
+            }
+
+            iv_range = args.iv_range
+
+            capital_limit = args.max_capital
+            pct_limit = None
+            if args.account_size and args.max_capital_pct:
+                pct_limit = args.account_size * (args.max_capital_pct / 100.0)
+            if capital_limit is None:
+                capital_limit = pct_limit
+            elif pct_limit is not None:
+                capital_limit = min(capital_limit, pct_limit)
+
+            display_condors, csv_condors, has_earnings = screener.find_best_iron_condors(
                 symbol=args.symbol.upper(),
                 max_days=args.max_days,
+                min_days=args.min_days,
                 min_net_credit=args.min_credit,
                 max_risk=args.max_risk,
                 min_probability=args.min_probability,
+                min_credit_ratio=args.min_credit_ratio,
                 limit=args.limit,
                 min_vol=args.min_vol,
-                min_oi=args.min_oi
+                min_oi=args.min_oi,
+                greek_filters=greek_filters,
+                iv_range=iv_range,
+                capital_limit=capital_limit,
             )
             
-            if iron_condors:
-                screener.display_results(iron_condors, args.criteria)
-                csv_path = screener.save_to_csv(iron_condors, args.symbol.upper(), has_earnings)
+            if display_condors:
+                screener.display_results(display_condors, args.criteria)
+                csv_path = screener.save_to_csv(csv_condors, args.symbol.upper(), has_earnings)
                 
-                if iron_condors:
-                    best = iron_condors[0]
+                if display_condors:
+                    best = display_condors[0]
                     print(f"\n🎯 Top Recommendation: {best.expiration} "
                           f"${best.call_spread[0]:.0f}/${best.call_spread[1]:.0f} call spread + "
                           f"${best.put_spread[0]:.0f}/${best.put_spread[1]:.0f} put spread")
                     print(f"   Net Credit: ${best.net_credit:.2f} | Max Profit: ${best.max_profit:.2f} | "
                           f"PoP: {best.probability_of_profit:.1f}% | Risk/Reward: {best.risk_reward_ratio:.2f}")
                 
-                print(f"\n💡 Next step: Run 'python screener.py pnl --csv {csv_path}' after expiration")
+                print(f"\n💡 Next step: Run 'uv run screener.py pnl --csv {csv_path}' after expiration")
         
         elif args.command == 'pnl':
             screener.calculate_pnl(args.csv, args.closing_price)

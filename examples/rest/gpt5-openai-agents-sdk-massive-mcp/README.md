@@ -28,28 +28,37 @@ A simple Python CLI for natural language financial queries using [GPT‑5](https
 
 ## Quickstart (with [uv](https://github.com/astral-sh/uv))
 
-1. **Install [uv](https://github.com/astral-sh/uv) if you don’t have it:**
+1. **Install uv:**
     ```sh
     curl -Ls https://astral.sh/uv/install.sh | sh
     ```
 
-2. **Get your API keys:**
-   - [OpenAI API key](https://platform.openai.com/api-keys)
-   - [Massive API key](https://massive.com/)
-
-3. **Create a `.env` file in the same directory as `main.py`:**
+2. **Clone the repo & enter this example:**
+    ```sh
+    git clone https://github.com/massive-com/community.git
+    cd community/examples/rest/gpt5-openai-agents-sdk-massive-mcp
     ```
-    OPENAI_API_KEY=sk-...
-    MASSIVE_API_KEY=your_massive_api_key_here
+
+3. **Create your `.env`:**
+    ```sh
+    cp env.example .env
+    # Edit .env and set:
+    # OPENAI_API_KEY=sk-...
+    # MASSIVE_API_KEY=your_massive_api_key_here
     ```
     Both keys are required for the CLI to work.
 
-4. **Run the CLI (dependencies will be auto-installed from `pyproject.toml`):**
+4. **Sync dependencies from `pyproject.toml`:**
+    ```sh
+    uv sync
+    ```
+
+5. **Run the CLI:**
     ```sh
     uv run main.py
     ```
 
-5. **Type your question and press Enter!**  
+6. **Type your question and press Enter!**  
    Type `exit` to quit.
 
 ---
@@ -96,14 +105,13 @@ Putting in `Do a return on investment analysis of Meta vs Microsoft. Review news
   ```
 
 - **`uvx: command not found`:**  
-  Install `uv` with `pipx install uv` or `pip install uv`.
+  Install `uv` with:
+  ```sh
+  curl -Ls https://astral.sh/uv/install.sh | sh
+  ```
 
 - **Dependencies:**  
-  `uv run` will install from `pyproject.toml`. If you prefer pip:
-  ```sh
-  pip install openai-agents pydantic rich python-dotenv openai
-  python main.py
-  ```
+  If modules are missing, rerun `uv sync` to ensure the virtual environment matches `pyproject.toml`, then execute `uv run main.py`.
 
 - **Guardrail blocks non‑finance prompts:**  
   Try a market or finance-related query.

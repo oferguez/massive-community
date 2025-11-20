@@ -10,7 +10,8 @@ A Python utility that screens and analyzes 0-DTE (zero days to expiration) cover
 
 - **Real-time Options Data**: Fetches live options chain data from Massive
 - **0-DTE Focus**: Specifically designed for same-day expiration covered calls
-- **Advanced Filtering**: Filter by delta range, out-of-the-money percentage, bid/ask spreads, and open interest
+- **Advanced Filtering**: Filter by delta range, out-of-the-money percentage, bid/ask spreads, open interest, volume, implied-volatility band, and minimum premium yield
+- **Capital Guardrails**: Limit covered-call selection based on account size or a fixed capital cap 
 - **Multiple Ranking Metrics**: Sort results by premium yield, max profit, or probability of profit
 - **P&L Tracking**: Mark-to-market functionality to track realized P&L after expiration
 - **CSV Export**: Export filtered results for further analysis
@@ -32,16 +33,18 @@ This tool provides a comprehensive screening system for 0-DTE covered call strat
 ## Requirements
 
 - Python 3.10+
-- `uv` package manager
-  - Install: `pipx install uv` or `pip install uv`
+- [uv](https://github.com/astral-sh/uv) package manager
+  ```bash
+  curl -Ls https://astral.sh/uv/install.sh | sh
+  ```
 - Massive API key (**Must be on Options Advanced license type**)
 
-## Setup
+## Quickstart (with [uv](https://github.com/astral-sh/uv))
 
 1. **Clone the repository**:
    ```bash
    git clone https://github.com/massive-com/community.git
-   cd examples/rest/options-0-dte-covered-call
+   cd community/examples/rest/options-0-dte-covered-call
    ```
 
 2. **Install dependencies using uv**:
@@ -78,12 +81,17 @@ uv run screener.py screen \
   --symbol SPY \
   --expiration-days 0 \
   --min-otm-pct 0.00 \
-  --max-otm-pct 0.03 \
-  --delta-lo 0.15 \
+  --max-otm-pct 0.05 \
+  --delta-lo 0.20 \
   --delta-hi 0.35 \
-  --min-bid 0.05 \
-  --min-open-interest 1 \
-  --max-spread-to-mid 0.75 \
+  --min-bid 0.10 \
+  --min-open-interest 500 \
+  --min-volume 200 \
+  --max-spread-to-mid 0.40 \
+  --min-premium-yield 0.33 \
+  --iv-range 0.20,0.60 \
+  --account-size 100000 \
+  --max-capital-pct 5 \
   --rank-metric premium_yield \
   --outdir ./data
 ```
@@ -111,7 +119,14 @@ uv run screener.py mark \
 | `--delta-hi` | 0.35 | Maximum delta threshold |
 | `--min-bid` | 0.05 | Minimum bid price filter |
 | `--min-open-interest` | 1 | Minimum open interest filter |
+| `--min-volume` | 0 | Minimum daily volume filter |
 | `--max-spread-to-mid` | 0.75 | Maximum bid-ask spread as % of mid |
+| `--min-premium-yield` | 0.0 | Minimum premium/spot ratio (0.33 = 33%) |
+| `--iv-range` | - | Implied volatility band (`min,max`) |
+| `--max-minutes-to-expiry` | - | Skip expirations with more minutes remaining than this limit |
+| `--account-size` | - | Account size used for capital % guardrail |
+| `--max-capital-pct` | 5 | Max % of account per covered call (requires `--account-size`) |
+| `--max-capital` | - | Absolute capital cap per call (USD) |
 | `--rank-metric` | premium_yield | Ranking method (premium_yield, max_profit, pop_est) |
 | `--outdir` | ./data | Output directory for CSV files |
 
@@ -131,13 +146,21 @@ The screener generates CSV files with the following columns:
 - `strike`: Strike price
 - `delta`: Option delta
 - `bid`/`ask`/`mid`: Bid, ask, and midpoint prices
+- `spread_pct`: Bid/ask spread divided by mid
 - `open_interest`: Number of open contracts
+- `volume`: Daily option volume
 - `iv`: Implied volatility
 - `spot`: Current underlying price
 - `premium_yield`: Premium as percentage of spot price
 - `breakeven`: Breakeven price for the strategy
 - `max_profit`: Maximum profit potential
 - `pop_est`: Estimated probability of profit
+- `minutes_to_expiry`: Minutes remaining until the closing bell on expiration day
+- `capital_required`: Approximate capital needed to own 100 shares of the underlying
+- `spread_pct`: Bid/ask spread divided by mid
+- `filter_*`: Every filter argument used for that run (symbol, OTM %, delta band, premium-yield floor, IV range, capital caps, etc.) is appended to each row so you can always reconstruct the screening criteria from the CSV.
+
+> The CLI still prints only the top ranked entries, but the CSV now includes **every** candidate that passed your filters for easy auditing and backtesting.
 
 ## Environment Variables
 
