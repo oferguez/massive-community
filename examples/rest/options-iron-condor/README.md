@@ -257,7 +257,7 @@ DEBUG=false  # Set to 'true' for detailed logging
 
 **Capital Limits**: Combine `--account-size` with `--max-capital-pct` (default 5%) or pass `--max-capital` to cap per-condor risk in USD. Risk is calculated from the widest spread minus the credit (per contract).
 
-**Minimum/Maximum Days**: Pair `--min-days` and `--max-days` to keep expirations in the sweet spot (e.g., 14–35 days similar to the Alpaca example).
+**Minimum/Maximum Days**: Pair `--min-days` and `--max-days` to keep expirations in the sweet spot (e.g., 14–35 days).
 
 ## 📁 Project Structure
 

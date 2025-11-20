@@ -11,7 +11,7 @@ A Python utility that screens and analyzes 0-DTE (zero days to expiration) cover
 - **Real-time Options Data**: Fetches live options chain data from Massive
 - **0-DTE Focus**: Specifically designed for same-day expiration covered calls
 - **Advanced Filtering**: Filter by delta range, out-of-the-money percentage, bid/ask spreads, open interest, volume, implied-volatility band, and minimum premium yield
-- **Capital Guardrails**: Limit covered-call selection based on account size or a fixed capital cap (mirrors the buy-power controls in Alpaca's 0DTE examples)
+- **Capital Guardrails**: Limit covered-call selection based on account size or a fixed capital cap 
 - **Multiple Ranking Metrics**: Sort results by premium yield, max profit, or probability of profit
 - **P&L Tracking**: Mark-to-market functionality to track realized P&L after expiration
 - **CSV Export**: Export filtered results for further analysis
@@ -75,7 +75,7 @@ uv run screener.py screen
 
 ### Advanced Screening
 
-Customize screening parameters (example mirrors the guardrails from Alpaca's 0DTE guide—tight delta bands, IV window, premium yield floor, and capital cap):
+Customize screening parameters:
 ```bash
 uv run screener.py screen \
   --symbol SPY \
