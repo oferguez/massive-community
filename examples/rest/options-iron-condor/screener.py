@@ -712,7 +712,7 @@ class IronCondorScreener:
         print("   Exp        Call Spread    Put Spread    Net Credit  Max Profit  Max Loss   PoP%   Risk/Reward  Credit%")
         print("   " + "-" * 120)
         
-        for ic in sorted_condors[:5]:
+        for ic in sorted_condors[:10]:
             call_spread = f"${ic.call_spread[0]:.0f}/${ic.call_spread[1]:.0f}"
             put_spread = f"${ic.put_spread[0]:.0f}/${ic.put_spread[1]:.0f}"
             exp_short = ic.expiration.split('-')[1] + '-' + ic.expiration.split('-')[2]
@@ -819,6 +819,7 @@ class IronCondorScreener:
         profitable_trades = 0
         total_pnl = 0.0
         evaluated_trades = 0
+        pnl_details = []  # Store details for debugging
         
         for _, row in df.iterrows():
             key = (row['symbol'], row['expiration'])
@@ -841,34 +842,51 @@ class IronCondorScreener:
                 
             # 2. Call Side Loss
             elif row_close > call_sell:
-                # Loss = (Price - Sold Strike) - Credit
-                # Capped at (Buy - Sold) - Credit
-                loss_amt = (row_close - call_sell)
-                max_loss_call = call_buy - call_sell
-                
-                if loss_amt > max_loss_call:
-                    loss_amt = max_loss_call
+                # Calculate loss on call spread
+                # If price > call_buy: lose full spread width
+                # If price between call_sell and call_buy: lose intrinsic value
+                call_spread_width = call_buy - call_sell
+                if row_close >= call_buy:
+                    # Maximum loss on call side
+                    loss_amt = call_spread_width
+                else:
+                    # Partial loss: intrinsic value of call spread
+                    loss_amt = row_close - call_sell
                     
                 pnl = net_credit - loss_amt
                 
             # 3. Put Side Loss
             elif row_close < put_sell:
-                # Loss = (Sold Strike - Price) - Credit
-                # Capped at (Sold - Buy) - Credit
-                loss_amt = (put_sell - row_close)
-                max_loss_put = put_sell - put_buy
-                
-                if loss_amt > max_loss_put:
-                    loss_amt = max_loss_put
+                # Calculate loss on put spread
+                # If price < put_buy: lose full spread width
+                # If price between put_buy and put_sell: lose intrinsic value
+                put_spread_width = put_sell - put_buy
+                if row_close <= put_buy:
+                    # Maximum loss on put side
+                    loss_amt = put_spread_width
+                else:
+                    # Partial loss: intrinsic value of put spread
+                    loss_amt = put_sell - row_close
                     
                 pnl = net_credit - loss_amt
             
             evaluated_trades += 1
             
-            # Check if profitable (pnl > 0)
-            if pnl > 0 and not (put_sell <= row_close <= call_sell):
-                # Can still be profitable if loss is less than credit received
+            # Check if profitable (pnl > 0) - only count if not already counted in profit zone
+            is_profitable = pnl > 0
+            in_profit_zone = put_sell <= row_close <= call_sell
+            if is_profitable and not in_profit_zone:
+                # Can still be profitable if loss is less than credit received (already counted if in zone)
                 profitable_trades += 1
+            
+            # Store details for summary
+            pnl_details.append({
+                'profit_zone': f"${put_sell:.1f}-${call_sell:.1f}",
+                'close_price': row_close,
+                'in_zone': in_profit_zone,
+                'pnl': pnl,
+                'profitable': is_profitable
+            })
             
             total_pnl += pnl
         
@@ -876,19 +894,43 @@ class IronCondorScreener:
             print("❌ Unable to evaluate P&L because no closing prices were available.")
             return
         
-        win_rate = (profitable_trades / evaluated_trades) * 100
-        avg_pnl = total_pnl / evaluated_trades
+        win_rate = (profitable_trades / evaluated_trades) * 100 if evaluated_trades > 0 else 0
+        avg_pnl = total_pnl / evaluated_trades if evaluated_trades > 0 else 0
         skipped_trades = total_trades - evaluated_trades
         closing_context = f"${closing_price:.2f}" if closing_price is not None else "per-expiration closes"
+        
+        # Show the actual closing prices used for debugging
+        if closing_price is None and expiration_prices:
+            unique_closes = set(v for v in expiration_prices.values() if v is not None)
+            if len(unique_closes) == 1:
+                closing_context = f"${list(unique_closes)[0]:.2f} (auto-fetched)"
+            elif len(unique_closes) > 1:
+                closing_context = f"multiple prices: {sorted(unique_closes)}"
+        
+        # Analyze P&L details
+        in_zone_profitable = sum(1 for d in pnl_details if d['in_zone'] and d['profitable'])
+        out_zone_profitable = sum(1 for d in pnl_details if not d['in_zone'] and d['profitable'])
+        unprofitable = sum(1 for d in pnl_details if not d['profitable'])
         
         print(f"\n📈 P&L Summary (Closing Prices: {closing_context}):")
         print(f"   Trades Evaluated: {evaluated_trades} / {total_trades}")
         if skipped_trades:
             print(f"   Skipped Trades (missing price): {skipped_trades}")
-        print(f"   Profitable Trades: {profitable_trades}")
+        print(f"   Profitable Trades: {profitable_trades} ({in_zone_profitable} in profit zone, {out_zone_profitable} outside but still profitable)")
+        print(f"   Unprofitable Trades: {unprofitable}")
         print(f"   Win Rate: {win_rate:.1f}%")
         print(f"   Total P&L: ${total_pnl:.2f}")
         print(f"   Average P&L per Trade: ${avg_pnl:.2f}")
+        
+        # Warning if all trades are profitable (unusual)
+        if evaluated_trades > 0 and profitable_trades == evaluated_trades:
+            print(f"\n⚠️  WARNING: All {evaluated_trades} trades are profitable. This is unusual.")
+            print(f"   Expected win rate based on PoP: ~30-35%")
+            print(f"   Please verify the closing price used: {closing_context}")
+            if pnl_details:
+                sample_zone = pnl_details[0]['profit_zone']
+                sample_close = pnl_details[0]['close_price']
+                print(f"   Example: Profit zone {sample_zone}, Close: ${sample_close:.2f}")
         
         return {
             "evaluated_trades": evaluated_trades,
