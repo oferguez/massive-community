@@ -6,12 +6,7 @@
 
 * Example:
 
-1) Short PUT $90 
-1) Long PUT $98 
-1) Short CALL $102
-1) Long CALL $110
-
-* 4 Options, Mkt at time of purchase: $100
+4 Options, Mkt at time of purchase: $100
 
 |Type|Side |Strike|Premium|
 |----|-----|------|-------|
