@@ -9,6 +9,7 @@ import math
 import argparse
 import pandas as pd
 import numpy as np
+import json
 import concurrent.futures
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
@@ -17,6 +18,8 @@ from massive import RESTClient
 from dotenv import load_dotenv
 from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass
+from datetime import date, timedelta
+
 
 # Configuration
 ET = ZoneInfo("America/New_York")
@@ -107,6 +110,7 @@ class IronCondorScreener:
             self.client = RESTClient(api_key=api_key)
         
         self.debug = os.getenv('DEBUG', 'false').lower() == 'true'
+        self.free_tier = os.getenv('FREETIER', 'false').lower() == 'true'
         
     def log(self, message: str):
         """Log message if debug is enabled"""
@@ -121,6 +125,29 @@ class IronCondorScreener:
         except Exception as e:
             self.log(f"Error getting current price for {symbol}: {e}")
             return 0.0
+        
+    def get_last_close(self, symbol: str) -> float:
+        # previous trading day – for demo just "yesterday"
+        end = date.today() - timedelta(days=7)
+        start = end
+
+        try:
+            aggs = list(self.client.list_aggs(
+                ticker=symbol,
+                multiplier=1,
+                timespan="day",
+                from_=start.isoformat(),
+                to=end.isoformat(),
+                limit=1,
+            ))
+            if not aggs:
+                raise RuntimeError("No aggregates returned")
+            return float(aggs[-1].close)
+        except Exception as e:
+            self.log(f"Error getting last close for {symbol}: {e}")
+            return 0.0
+
+
     
     def check_upcoming_earnings(self, symbol: str, max_days: int = 30) -> bool:
         """Check if there are upcoming earnings within max_days"""
@@ -270,7 +297,8 @@ class IronCondorScreener:
                 if bucket['calls'] or bucket['puts']:
                     grouped_options[expiration] = bucket
         
-        self.log(f"Collected option data for {len(grouped_options)} expirations")
+        self.log(f"Collected option data for {len(grouped_options)} expirations: ")
+        self.log(json.dumps(grouped_options))
         return grouped_options
     
     def _get_expiration_close_price(self, symbol: str, expiration: str) -> Optional[float]:
@@ -570,14 +598,15 @@ class IronCondorScreener:
         max_days = max(max_days, min_days)
 
         # Get current price
-        spot_price = self.get_current_price(symbol)
+        # spot_price = self.get_current_price(symbol) #todo: free tier limit - reverting to last close
+        spot_price = self.get_last_close(symbol)
         if spot_price == 0:
             print(f"❌ Could not get current price for {symbol}")
             return [], False
         
-        # Check for upcoming earnings
+        # Check for upcoming earnings //
         has_earnings = self.check_upcoming_earnings(symbol, max_days)
-        if has_earnings:
+        if has_earnings: # todo: free tier limit, no earnings 
             print(f"⚠️  Warning: {symbol} has upcoming earnings within {max_days} days")
         
         print(f"💰 Current spot price: ${spot_price:.2f}")
@@ -963,7 +992,7 @@ def main():
     find_parser.add_argument('--long-theta-range', type=parse_range, help='Theta range for long legs')
     find_parser.add_argument('--iv-range', type=parse_range, help='Implied volatility range (applied to every leg)')
     find_parser.add_argument('--min-credit-ratio', type=float, default=0.0, help='Minimum credit / spread width (0 - 1)')
-    find_parser.add_argument('--account-size', type=float, help='Account size in USD for capital % calculations')
+    find_parser.add_argument('--account-size', type=float, help='Account size in USD for capital %% calculations')
     find_parser.add_argument('--max-capital-pct', type=float, default=5.0, help='Max percent of account per condor (default: 5%% when account size is set)')
     find_parser.add_argument('--max-capital', type=float, help='Absolute USD cap per condor (per contract risk)')
     find_parser.add_argument('--criteria', choices=['credit', 'probability', 'risk_reward'], 
