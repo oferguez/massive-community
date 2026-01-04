@@ -1,0 +1,34 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Current File with Arguments",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": "${command:pickArgs}"
+        },
+        {
+            "name": "Debug screener.py via uv",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/rest/options-iron-condor/screener.py",
+            "console": "integratedTerminal",
+            "args": [
+                "find",
+                "--symbol",
+                "SPY"
+            ]
+        },
+        {
+            "name": "Debug contract_fetcher.py via uv",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/rest/options-iron-condor/og/contract_fetcher.py",
+            "console": "integratedTerminal",
+            "args": []
+        }
+
+    ]
+}

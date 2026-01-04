@@ -1,3 +1,14 @@
 {
-  "python.defaultInterpreterPath": "/home/ofer/miniconda3/envs/massive-default/bin/python"
+  "python.defaultInterpreterPath": "/home/ofer/wsl_repos/massive-community/examples/rest/options-iron-condor/.venv/bin/python",
+  "python.analysis.diagnosticMode": "openFilesOnly",
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportLineTooLong": "none",
+    "reportUnusedImport": "none",
+    "reportUnusedVariable": "none",
+    "reportUnusedFunction": "none",
+    "reportUnusedClass": "none",
+    "reportUnusedParameter": "none",
+    "reportMissingDocstring": "none"
+  },
+  "editor.tabCompletion": "on",
 }
