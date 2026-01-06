@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, asdict
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from enum import Enum
 import json
 import os
@@ -91,11 +91,18 @@ class OptionContractRow:
 
 class IContractFetcher(Protocol):
     @abstractmethod
-    def fetch_contracts(
+    def fetch_contracts_by_expiry(
         self,
         underlying_ticker: str,
         exp_from: str,
         exp_to: str
+    ) -> List[OptionContractRow]:
+        ...
+    @abstractmethod
+    def fetch_contracts_by_date(
+        self,
+        underlying_ticker: str,
+        as_of: str,
     ) -> List[OptionContractRow]:
         ...
 
@@ -128,7 +135,7 @@ class MassiveContractFetcher(IContractFetcher):
             raw=d.__dict__
         )
 
-    def fetch_contracts(self, underlying_ticker: str, exp_from: str, exp_to: str) -> List[OptionContractRow]:
+    def fetch_contracts_by_expiry(self, underlying_ticker: str, exp_from: str, exp_to: str) -> List[OptionContractRow]:
 
         base_params: Dict[str, Any] = {
             "underlying_ticker": underlying_ticker,
@@ -147,23 +154,136 @@ class MassiveContractFetcher(IContractFetcher):
 
         contracts = self.massive_client.list_options_contracts(**base_params,params=filter_params)
         if isinstance(contracts, HTTPResponse):
-            raise ValueError(f"API request failed; check your API key and parameters. Response content: {contracts}")
+            msg = f"API request failed; Response content: {contracts}"
+            logger.warning(msg)
+            raise ValueError(msg)
 
         assert hasattr(OptionContractRow, "__dataclass_fields__"), "OptionContractRow must be a dataclass"
         df = [MassiveContractFetcher.parse_row(c) for c in contracts] # type: ignore
 
         return df
 
+    def fetch_contracts_by_date(self, underlying_ticker: str, as_of: str) -> List[OptionContractRow]:
+        contracts:Iterator[OptionsContract]|HTTPResponse = self.massive_client.list_options_contracts(
+            underlying_ticker=underlying_ticker,
+            as_of=as_of,
+            expired=True,
+            order="asc",
+            limit=1000,
+            sort="ticker")
+
+        if isinstance(contracts, HTTPResponse):
+            msg = f"API request failed; Response content: {contracts}"
+            logger.warning(msg)
+            raise ValueError(msg)
+
+        assert hasattr(OptionContractRow, "__dataclass_fields__"), "OptionContractRow must be a dataclass"
+        df = [MassiveContractFetcher.parse_row(c) for c in contracts]
+
+        return df
 
 class ContractFetcher:
     def __init__(self, md_client: IContractFetcher, verbose: bool = False):
         self.client:IContractFetcher = md_client
         self.verbose:bool = verbose
 
-    def fetch_contracts(self, underlying_ticker: str, exp_from: str, exp_to: str) -> List[OptionContractRow]:
-        df = self.client.fetch_contracts(underlying_ticker=underlying_ticker, exp_from=exp_from, exp_to=exp_to)
+    def fetch_contracts_by_expiry(self, underlying_ticker: str, exp_from: str, exp_to: str) -> List[OptionContractRow]:
+        df = self.client.fetch_contracts_by_expiry(underlying_ticker=underlying_ticker, exp_from=exp_from, exp_to=exp_to)
         return df
 
+
+    def fetch_contracts_by_date(self, underlying_ticker: str, as_of: str) -> List[OptionContractRow]:
+        df = self.client.fetch_contracts_by_date(underlying_ticker=underlying_ticker,as_of = as_of)
+        return df
+
+
+# ---------------------------
+# PRICES MODEL
+# ---------------------------
+
+@dataclass(frozen=True)
+class PriceRow:
+    ticker: Optional[str] = None
+    date: Optional[date] = None
+    price: Optional[float] = None
+    open: Optional[float] = None
+    high: Optional[float] = None
+    low: Optional[float] = None
+    close: Optional[float] = None
+    volume: Optional[float] = None
+    raw: Optional[dict[Any, Any]] = None
+
+
+# ---------------------------
+# PRICES INTERFACE
+# ---------------------------
+
+class IPriceFetcher(Protocol):
+    @abstractmethod
+    def fetch_prices(
+        self,
+        ticker: str,
+        date_from: str,
+        date_to: str
+    ) -> List[PriceRow]:
+        ...
+
+
+# ---------------------------
+# MASSIVE PRICE FETCHER
+# ---------------------------
+
+class MassivePriceFetcher(IPriceFetcher):
+    def __init__(self) -> None:
+        self.massive_client: RESTClient = RESTClient(api_key=os.environ["MASSIVE_API_KEY"])
+        super().__init__()
+
+    @staticmethod
+    def parse_row(ticker: str, price_date: date, agg: Any) -> PriceRow:
+        close_price = getattr(agg, "close", None)
+        if close_price is None:
+            close_price = getattr(agg, "after_hours", None)
+
+        return PriceRow(
+            ticker=ticker,
+            date=price_date,
+            price=Utils.to_float(close_price, alert_on_none=False),
+            open=Utils.to_float(getattr(agg, "open", None), alert_on_none=False),
+            high=Utils.to_float(getattr(agg, "high", None), alert_on_none=False),
+            low=Utils.to_float(getattr(agg, "low", None), alert_on_none=False),
+            close=Utils.to_float(getattr(agg, "close", None), alert_on_none=False),
+            volume=Utils.to_float(getattr(agg, "volume", None), alert_on_none=False),
+            raw=getattr(agg, "__dict__", None),
+        )
+
+    def fetch_prices(self, ticker: str, date_from: str, date_to: str) -> List[PriceRow]:
+        start = Utils.to_date(date_from)
+        end = Utils.to_date(date_to)
+        if start > end:
+            raise ValueError(f"date_from must be <= date_to; got {date_from} > {date_to}")
+
+        rows: List[PriceRow] = []
+        current = start
+        while current <= end:
+            date_str = current.strftime("%Y-%m-%d")
+            try:
+                agg = self.massive_client.get_daily_open_close_agg(ticker=ticker, date=date_str)
+                rows.append(self.parse_row(ticker, current, agg))
+            except (ValueError, TypeError, KeyError) as e:
+                logger.warning("Failed to fetch price for %s on %s: %s", ticker, date_str, e)
+            current += timedelta(days=1)
+
+        return rows
+
+
+class PriceFetcher:
+    def __init__(self, md_client: IPriceFetcher, verbose: bool = False):
+        self.client: IPriceFetcher = md_client
+        self.verbose: bool = verbose
+
+    def fetch_prices(self, ticker: str, date_from: str, date_to: str) -> List[PriceRow]:
+        rows = self.client.fetch_prices(ticker=ticker, date_from=date_from, date_to=date_to)
+        return rows
 
 # ---------------------------
 # UTILS
@@ -255,21 +375,41 @@ class Utils:
 # Example usage
 # ---------------------------
 
+def test_scan(ticker:str, as_of:str):
+    contracts_fetcher = ContractFetcher(md_client=MassiveContractFetcher(), verbose=True)
+    prices_fetcher = PriceFetcher(md_client=MassivePriceFetcher(), verbose=True)
+    contracts = contracts_fetcher.fetch_contracts_by_date(ticker, as_of)
+    prices = prices_fetcher.fetch_prices(ticker, as_of, as_of)
+    logger.info("Fetched %d contracts and %d prices for %s as of %s", len(contracts), len(prices), ticker, as_of)
+    logger.info("Prices:%s", prices)
+    logger.info("Contracts: %s", contracts)
+
 def test_aapl_massive():
     contracts_fetcher = ContractFetcher(md_client=MassiveContractFetcher(), verbose=True)
-    contracts = contracts_fetcher.fetch_contracts("AAPL", "2024-01-01", "2024-01-15")
+    contracts = contracts_fetcher.fetch_contracts_by_expiry("AAPL", "2025-01-01", "2025-01-15")
 
     contracts_df = pd.DataFrame([
         {k: v for k, v in asdict(c).items() if k != "raw"}
         for c in contracts
     ])
     print(contracts_df.head())
-    print(contracts_df['strike_price'].describe())
     print(contracts_df.describe(include='all'))
 
     script_dir = Path(__file__).parent
-    output_path = script_dir / '../notebooks/data/aapl.csv'
+    output_path = script_dir / '../notebooks/data/aapl_contracts.csv'
     contracts_df.to_csv(output_path.resolve())
 
+    prices_fetcher = PriceFetcher(md_client=MassivePriceFetcher(), verbose=True)
+    prices = prices_fetcher.fetch_prices("AAPL", "2025-01-01", "2025-01-15")
+    prices_df = pd.DataFrame([
+        {k: v for k, v in asdict(p).items() if k != "raw"}
+        for p in prices
+    ])
+    print(prices_df.head())
+    print(prices_df.describe(include='all'))
+    output_path = script_dir / '../notebooks/data/aapl_prices.csv'
+    prices_df.to_csv(output_path.resolve())
+
 if __name__ == "__main__":
-    test_aapl_massive()
+    test_scan("AAPL", "2025-01-03")
+    
