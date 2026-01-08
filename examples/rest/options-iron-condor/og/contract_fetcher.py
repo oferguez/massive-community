@@ -181,7 +181,6 @@ class MassiveContractFetcher(IContractFetcher):
 
         assert hasattr(OptionContractRow, "__dataclass_fields__"), "OptionContractRow must be a dataclass"
 
-        ###############
         df:List[OptionContractRow] = []
         sleepover = 1
         try:
@@ -199,10 +198,6 @@ class MassiveContractFetcher(IContractFetcher):
         except Exception as e:
             logger.error("Error fetching options: %s", e)
             raise
-
-        ###############
-
-        # df = [MassiveContractFetcher.parse_row(c) for c in contracts]
 
         return df
 
@@ -384,17 +379,6 @@ class Utils:
         except ValueError:
             return fallback
 
-    @staticmethod
-    def postprocess_contracts_df(df: pd.DataFrame) -> pd.DataFrame:
-        if df.empty:
-            return df
-
-        sort_cols = [c for c in ["expiration_date", "contract_type", "strike_price", "ticker"] if c in df.columns]
-        df = df.sort_values(sort_cols, ascending=True, kind="stable").reset_index(drop=True)
-
-        return df
-
-
 # ---------------------------
 # Example usage
 # ---------------------------
@@ -418,7 +402,6 @@ def test_scan(ticker:str, as_of:str):
     logger.info("Fetched %d contracts and %d prices for %s as of %s", len(contracts), len(prices), ticker, as_of)
     logger.info("Prices:%s", prices)
     logger.info("Contracts: %s", contracts)
-
 
 def test_aapl_massive():
     contracts_fetcher = ContractFetcher(md_client=MassiveContractFetcher(), verbose=True)
@@ -462,8 +445,5 @@ def describe_db():
         f.write("\n\n# Summary Statistics\n\n")
         f.write(describe_md)
 
-
 if __name__ == "__main__":
-    #test_scan("AAPL", "2025-01-03")
     describe_db()
-    

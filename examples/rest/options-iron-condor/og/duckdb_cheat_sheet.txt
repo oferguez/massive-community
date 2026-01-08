@@ -7,6 +7,18 @@ Interactive SQL for fast analytics (CLI / Python / VSCode)
 run single command:
     duckdb -c "show tables"
 
+sanity checks:
+  select
+    count(*) as n,
+    count_if(regexp_matches(lower(trim("[C_SIZE]")), '^[0-9]+\s*x\s*[0-9]+$')) as call_nxm,
+    count_if(regexp_matches(lower(trim("[P_SIZE]")), '^[0-9]+\s*x\s*[0-9]+$')) as put_nxm
+  from aapl_16_23_options;
+
+  select
+    quantile_cont(try_cast(regexp_extract("[P_SIZE]", '^\s*([0-9]+)\s*x', 1) as double), 0.5) as put_bid_size_median
+  from aapl_16_23_options;
+
+
 📁 File & Table Operations
 ------------------------------------------------------------
 Open DuckDB file:

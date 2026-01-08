@@ -77,3 +77,4 @@ data/
 reports/
 obs/
 logs/
+*.duckdb
