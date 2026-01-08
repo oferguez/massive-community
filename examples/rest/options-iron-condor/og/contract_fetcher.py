@@ -6,11 +6,12 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, asdict
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from enum import Enum
 import json
 import os
 from pathlib import Path
+from time import sleep
 from typing import Any, Dict, Iterator, List, Optional, Protocol, Union
 import logging
 from dotenv import load_dotenv
@@ -18,6 +19,7 @@ from massive import RESTClient # type: ignore
 from massive.rest.models import OptionsContract # type: ignore
 import pandas as pd
 from urllib3 import HTTPResponse
+import duckdb
 
 # ---------------------------
 # setup
@@ -167,7 +169,7 @@ class MassiveContractFetcher(IContractFetcher):
         contracts:Iterator[OptionsContract]|HTTPResponse = self.massive_client.list_options_contracts(
             underlying_ticker=underlying_ticker,
             as_of=as_of,
-            expired=True,
+            expired=False,
             order="asc",
             limit=1000,
             sort="ticker")
@@ -178,7 +180,29 @@ class MassiveContractFetcher(IContractFetcher):
             raise ValueError(msg)
 
         assert hasattr(OptionContractRow, "__dataclass_fields__"), "OptionContractRow must be a dataclass"
-        df = [MassiveContractFetcher.parse_row(c) for c in contracts]
+
+        ###############
+        df:List[OptionContractRow] = []
+        sleepover = 1
+        try:
+            for idx, contract in enumerate(contracts):
+                df.append(MassiveContractFetcher.parse_row(contract))
+                logger.info("appended %s", idx)
+                # !!! this is the free tier limitation allowing up to 5 requests per minute
+                if idx and idx % 4000 == 0:
+                    sleepover += 1
+                    if sleepover > 3:
+                        logger.warning("breaking out after %s contracts", idx)
+                        break
+                    logger.warning("throttling requesting due to free tier rate limits %s", idx)
+                    sleep(60)  # chill for a minute
+        except Exception as e:
+            logger.error("Error fetching options: %s", e)
+            raise
+
+        ###############
+
+        # df = [MassiveContractFetcher.parse_row(c) for c in contracts]
 
         return df
 
@@ -380,9 +404,21 @@ def test_scan(ticker:str, as_of:str):
     prices_fetcher = PriceFetcher(md_client=MassivePriceFetcher(), verbose=True)
     contracts = contracts_fetcher.fetch_contracts_by_date(ticker, as_of)
     prices = prices_fetcher.fetch_prices(ticker, as_of, as_of)
+
+    contracts_df = pd.DataFrame([
+        {k: v for k, v in asdict(c).items() if k != "raw"}
+        for c in contracts
+    ])
+    logger.info(contracts_df.head())
+    logger.info(contracts_df.describe(include='all'))
+    script_dir = Path(__file__).parent
+    output_path = script_dir / '../notebooks/data/aapl_contracts.csv'
+    contracts_df.to_csv(output_path.resolve())
+
     logger.info("Fetched %d contracts and %d prices for %s as of %s", len(contracts), len(prices), ticker, as_of)
     logger.info("Prices:%s", prices)
     logger.info("Contracts: %s", contracts)
+
 
 def test_aapl_massive():
     contracts_fetcher = ContractFetcher(md_client=MassiveContractFetcher(), verbose=True)
@@ -410,6 +446,24 @@ def test_aapl_massive():
     output_path = script_dir / '../notebooks/data/aapl_prices.csv'
     prices_df.to_csv(output_path.resolve())
 
+def describe_db():
+    pd.set_option("display.max_columns", None)  # Show all columns
+    pd.set_option("display.width", None)        # Don't wrap lines
+    pd.set_option("display.expand_frame_repr", False)  # Show in one line
+
+    script_dir = Path(__file__).parent
+    con = duckdb.connect(script_dir / "data" / "aapl_options.duckdb")
+    df = con.execute("SELECT * FROM aapl_16_23_options").fetchdf()
+    head_md = df.head().to_markdown(index=False)
+    describe_md = df.describe().to_markdown()
+    with open(script_dir / "options_head.md", "w", encoding="utf-8") as f:
+        f.write("# Preview: First 5 Rows\n\n")
+        f.write(head_md)
+        f.write("\n\n# Summary Statistics\n\n")
+        f.write(describe_md)
+
+
 if __name__ == "__main__":
-    test_scan("AAPL", "2025-01-03")
+    #test_scan("AAPL", "2025-01-03")
+    describe_db()
     
