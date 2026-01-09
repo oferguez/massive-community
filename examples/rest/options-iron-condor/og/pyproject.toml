@@ -1,0 +1,6 @@
+[tool.pylint]
+disable = [
+  "missing-docstring",
+  "unused-import",
+  "line-too-long",
+]

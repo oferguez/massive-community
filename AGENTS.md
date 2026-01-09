@@ -3,9 +3,9 @@
 ## Project Structure & Module Organization
 - `examples/` contains API demo projects; each subfolder has its own README and tooling.
 - `examples/rest/options-iron-condor/og/` is the active research workspace, with fetchers, models, and utilities.
-- `examples/rest/options-iron-condor/og/data/` stores local DuckDB files, and schema docs (see `examples/rest/options-iron-condor/og/data/schemas_desc.md`).
-- `logs/`, and `obs/` hold assets and experiment outputs.
-- `models` contains the generic models used for the trading logic. 
+- `examples/rest/options-iron-condor/og/data/` stores local DuckDB files and schema docs (see `examples/rest/options-iron-condor/og/data/schemas_desc.md`).
+- `images/` holds assets; `logs/` and `obs/` store experiment outputs.
+- `examples/rest/options-iron-condor/og/models/` contains the generic models used for trading logic.
 
 
 ## Build, Test, and Development Commands
@@ -17,12 +17,12 @@
 - Python is the primary language; use 4-space indentation and keep modules small and composable.
 - Prefer explicit, descriptive names (`ContractFetcher`, `PriceFetcher`) and keep file names snake_case.
 - Use dependency injection throughout the project; all external services or storage targets should be passed in rather than instantiated globally.
-- Linting is optional; a minimal `pylint` config exists in `examples/rest/options-iron-condor/og/pyproject.toml`. Remember to clear linting error when we get to some stable version and move the og workspace to its own.
+- Linting is optional; a minimal `pylint` config exists in `examples/rest/options-iron-condor/og/pyproject.toml`. Keep suppressions minimal and revisit once `og` is extracted.
 
 ## Testing Guidelines
 - Some examples use `unittest` (see `examples/rest/options-iron-condor/tests/`).
-- for the og workspace, keep tests in folder `massive-community/examples/rest/options-iron-condor/og/tests` Run tests from that folder with `python -m unittest`.
-- When adding tests, mirror the module name 
+- For `og`, keep tests in `examples/rest/options-iron-condor/og/tests` and run `python -m unittest` from that folder.
+- When adding tests, mirror module names (e.g., `screener.py` → `test_screener.py`).
 
 ## Data Sources & Workflow Notes
 - The initial data set in `og/data/` was imported from Kaggle and currently includes option metadata and end-of-day quotes.
