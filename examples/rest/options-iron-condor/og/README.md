@@ -33,6 +33,25 @@ python examples/rest/options-iron-condor/og/main.py --quote-date 2020-01-02 --sy
 ## Workflow Direction (Planned)
 The higher-level model will run for a target date and rebalance target (cash to add/withdraw). It will load a portfolio and positions from the database (initially just `AAPL` with multiple legs is expected), scan quotes/greeks, and propose rebalancing choices based on market outlook. When a user selects a recommendation, the model will assume execution at current quotes, rebalance the portfolio, and persist the updated state. Execution commands and portfolio evolution should be tracked over time; via dependency injection, these can be stored in DuckDB, logs, or test doubles.
 
+## Iron Condor Selection Logic (From `screener.py`)
+The current screener (`examples/rest/options-iron-condor/screener.py`) builds and ranks iron condors with the following rules:
+
+- **Expiration window**: only expirations between `min_days` and `max_days` from today.
+- **Liquidity filter**: keep options with `volume >= min_vol` and `open_interest >= min_oi`.
+- **Strike window**: consider strikes within ±`STRIKE_DISTANCE_PCT` of spot.
+  - Calls: spot → spot × (1 + `STRIKE_DISTANCE_PCT`) and keep at most `MAX_OPTIONS_PER_SIDE`.
+  - Puts: spot × (1 - `STRIKE_DISTANCE_PCT`) → spot and keep at most `MAX_OPTIONS_PER_SIDE` closest to spot.
+- **Spread width limits**: each spread must be positive and ≤ `max(MIN_SPREAD_ABS, min(MAX_SPREAD_ABS, spot × MAX_SPREAD_PCT))`.
+- **Leg filters**: optional ranges for delta/theta on short vs long legs, plus optional IV range per leg.
+- **Profit zone**: short put strike < short call strike.
+- **Credit & risk**:
+  - Use mid prices (`(bid + ask) / 2`) for each leg.
+  - Net credit must be > 0.
+  - `max_loss = widest_spread - net_credit` and must be > 0.
+  - `credit_ratio = net_credit / widest_spread`.
+- **Probability of profit**: estimated via a Black-Scholes-based probability of expiring between the short strikes (mean IV from legs).
+- **Filtering & ranking** (in `find_best_iron_condors`): apply minimum net credit, max risk, minimum probability, optional credit ratio, and optional capital limit; then rank by highest net credit (default display order).
+
 ## Portfolio State & Executions (Planned)
 - Track portfolio state changes over time in internal models.
 - Persist execution commands and resulting portfolio snapshots for auditability.
