@@ -3,16 +3,20 @@ from __future__ import annotations
 from dataclasses import asdict
 from pathlib import Path
 import logging
+import argparse
 
 from dotenv import load_dotenv
 import pandas as pd
 
 from fetchers.contracts import ContractFetcher
+from fetchers.duckdb_option_quote_fetcher import DuckDbOptionQuoteFetcher
+from fetchers.duckdb_price_fetcher import DuckDbPriceFetcher
 from fetchers.massive_contract_fetcher import MassiveContractFetcher
-from fetchers.prices import PriceFetcher
 from fetchers.massive_price_fetcher import MassivePriceFetcher
+from fetchers.prices import PriceFetcher
+from utils.market_snapshot_builder import MarketSnapshotBuilder
 from utils.logging_config import configure_logging
-from data.db_tools import describe_db
+from utils.db_tools import describe_db
 
 logger = logging.getLogger(__name__)
 
@@ -57,9 +61,38 @@ def test_aapl_massive() -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Build a market snapshot from DuckDB data.")
+    parser.add_argument("--quote-date", default="2020-01-02", help="Target quote date (YYYY-MM-DD).")
+    parser.add_argument("--symbols", default="AAPL", help="Comma-separated list of symbols.")
+    parser.add_argument("--min-dte", type=int, default=1, help="Minimum days to expiration filter.")
+    parser.add_argument("--max-dte", type=int, default=7, help="Maximum days to expiration filter (exclusive).")
+    args = parser.parse_args()
+    db_path = Path(__file__).parent / "data" / "aapl_options_norm.duckdb"
+
     configure_logging()
     load_dotenv()
-    describe_db()
+    describe_db(db_path=db_path)
+
+    price_fetcher = DuckDbPriceFetcher(db_path=db_path)
+    quote_fetcher = DuckDbOptionQuoteFetcher(db_path=db_path)
+    builder = MarketSnapshotBuilder(price_fetcher=price_fetcher, option_quote_fetcher=quote_fetcher)
+    symbols = [symbol.strip() for symbol in args.symbols.split(",") if symbol.strip()]
+    snapshot = builder.build_for_date(args.quote_date, symbols=symbols, min_dte=args.min_dte, max_dte=args.max_dte)
+    logger.info("Snapshot instruments: %s", list(snapshot.instruments.keys()))
+    for symbol, instrument in snapshot.instruments.items():
+        if instrument.option_chain:
+            quote_count = len(instrument.option_chain.quotes)
+            expirations = {quote.expiration for quote in instrument.option_chain.quotes if quote.expiration}
+        else:
+            quote_count = 0
+            expirations = set()
+        logger.info(
+            "%s: price=%s quotes=%d expirations=%d",
+            symbol,
+            instrument.price.close if instrument.price else None,
+            quote_count,
+            len(expirations),
+        )
 
 
 if __name__ == "__main__":

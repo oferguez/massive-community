@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 
 @dataclass(frozen=True)
-class PriceRow:
+class InstrumentPriceRow:
     ticker: Optional[str] = None
     date: Optional[date] = None
     price: Optional[float] = None
@@ -15,4 +15,5 @@ class PriceRow:
     low: Optional[float] = None
     close: Optional[float] = None
     volume: Optional[float] = None
+    as_of: Optional[date] = None
     raw: Optional[dict[Any, Any]] = None

@@ -28,6 +28,19 @@
             "program": "${workspaceFolder}/examples/rest/options-iron-condor/og/contract_fetcher.py",
             "console": "integratedTerminal",
             "args": []
+        },
+        {
+            "name": "Debug og main snapshot",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/rest/options-iron-condor/og/main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--quote-date",
+                "2020-01-02",
+                "--symbols",
+                "AAPL"
+            ]
         }
 
     ]

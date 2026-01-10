@@ -1,6 +1,7 @@
 {
   "python.defaultInterpreterPath": "/home/ofer/wsl_repos/massive-community/examples/rest/options-iron-condor/.venv/bin/python",
   "python.analysis.diagnosticMode": "openFilesOnly",
+  "python.analysis.typeCheckingMode": "off",
   "python.analysis.diagnosticSeverityOverrides": {
     "reportLineTooLong": "none",
     "reportUnusedImport": "none",
@@ -8,7 +9,28 @@
     "reportUnusedFunction": "none",
     "reportUnusedClass": "none",
     "reportUnusedParameter": "none",
-    "reportMissingDocstring": "none"
+    "reportMissingDocstring": "none",
+    "reportUnknownVariableType": "none",
+    "reportUnknownArgumentType": "none"
   },
+  "pylint.args": [
+    "--rcfile",
+    "${workspaceFolder}/examples/rest/options-iron-condor/og/pyproject.toml"
+  ],
+  "pylint.cwd": "${workspaceFolder}/examples/rest/options-iron-condor/og",
   "editor.tabCompletion": "on",
+  "files.associations": {
+    "*.log": "log",
+    "logs/*": "log"
+  },
+
+  "highlight.regexes": {
+    "(^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3}\\s+(INFO|WARN|ERROR|DEBUG|CRITICAL).*)": {
+      "regexFlags": "g",
+      "filterFileRegex": ".*\\/logs\\/contract_fetcher_\\d{8}_\\d{6}\\.log$",
+      "decorations": [
+        { "color": "rgba(255,255,255,1)" }
+      ]
+    }
+  }  
 }

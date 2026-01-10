@@ -1,6 +1,12 @@
 {
   "python.analysis.typeCheckingMode": "off",
   "python.analysis.diagnosticSeverityOverrides": {
-    "*": "none"
-  }
+    "reportUnknownArgumentType": "none",
+    "reportUnknownVariableType": "none"
+  },
+  "pylint.args": [
+    "--rcfile",
+    "${workspaceFolder}/examples/rest/options-iron-condor/og/pyproject.toml"
+  ],
+  "pylint.cwd": "${workspaceFolder}/examples/rest/options-iron-condor/og"
 }

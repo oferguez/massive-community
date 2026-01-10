@@ -1,0 +1,19 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Open Latest Log",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "latest=$(ls -t \"${workspaceFolder}/logs\" 2>/dev/null | head -1); if [ -n \"$latest\" ]; then code \"${workspaceFolder}/logs/$latest\"; else echo \"No logs found in logs/\"; fi"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    }
+  ]
+}
