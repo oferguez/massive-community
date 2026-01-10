@@ -20,6 +20,9 @@ from utils.db_tools import describe_db
 
 logger = logging.getLogger(__name__)
 
+OTM_SAMPLE_SIZE = 5
+ATM_SAMPLE_SIZE = 8
+
 
 def test_scan(ticker: str, as_of: str) -> None:
     contracts_fetcher = ContractFetcher(md_client=MassiveContractFetcher(), verbose=True)
@@ -71,7 +74,7 @@ def main() -> None:
 
     configure_logging()
     load_dotenv()
-    describe_db(db_path=db_path)
+    # describe_db(db_path=db_path)
 
     price_fetcher = DuckDbPriceFetcher(db_path=db_path)
     quote_fetcher = DuckDbOptionQuoteFetcher(db_path=db_path)
@@ -93,6 +96,47 @@ def main() -> None:
             quote_count,
             len(expirations),
         )
+        if not instrument.option_chain or not instrument.price or instrument.price.close is None:
+            continue
+        price = instrument.price.close
+        quotes_with_strike = [quote for quote in instrument.option_chain.quotes if quote.strike is not None]
+        if not quotes_with_strike:
+            continue
+        otm_calls = [quote for quote in quotes_with_strike if quote.right == "C" and quote.strike > price]
+        otm_puts = [quote for quote in quotes_with_strike if quote.right == "P" and quote.strike < price]
+        otm_calls_sorted = sorted(otm_calls, key=lambda quote: quote.strike, reverse=True)
+        otm_puts_sorted = sorted(otm_puts, key=lambda quote: quote.strike)
+        atm_sorted = sorted(quotes_with_strike, key=lambda quote: abs(quote.strike - price))
+
+        def format_float(value: float | None) -> str:
+            if value is None:
+                return "None"
+            return f"{value:.4g}"
+
+        def format_int(value: int | None) -> str:
+            return "None" if value is None else str(value)
+
+        def format_quote(quote: object) -> str:
+            moneyness = None
+            if quote.strike is not None:
+                moneyness = (quote.strike - price) / price
+            return (
+                f"{quote.right or '?'} strike={format_float(quote.strike)} "
+                f"dte={quote.dte} "
+                f"bid={format_float(quote.bid)} ask={format_float(quote.ask)} "
+                f"mid={format_float(quote.mid)} size={format_int(quote.bid_size)}/{format_int(quote.ask_size)} "
+                f"mny={format_float(moneyness)}"
+            )
+
+        logger.info("%s: most OTM calls (%d):", symbol, OTM_SAMPLE_SIZE)
+        for quote in otm_calls_sorted[:OTM_SAMPLE_SIZE]:
+            logger.info("  %s", format_quote(quote))
+        logger.info("%s: most OTM puts (%d):", symbol, OTM_SAMPLE_SIZE)
+        for quote in otm_puts_sorted[:OTM_SAMPLE_SIZE]:
+            logger.info("  %s", format_quote(quote))
+        logger.info("%s: near ATM (%d):", symbol, ATM_SAMPLE_SIZE)
+        for quote in atm_sorted[:ATM_SAMPLE_SIZE]:
+            logger.info("  %s", format_quote(quote))
 
 
 if __name__ == "__main__":

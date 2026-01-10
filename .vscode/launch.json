@@ -37,11 +37,14 @@
             "console": "integratedTerminal",
             "args": [
                 "--quote-date",
-                "2020-01-02",
+                "2019-01-02",
                 "--symbols",
-                "AAPL"
+                "AAPL",
+                "--min-dte",
+                "1",
+                "--max-dte",
+                "28"
             ]
         }
-
     ]
 }

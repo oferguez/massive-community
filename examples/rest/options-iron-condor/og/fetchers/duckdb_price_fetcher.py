@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import logging
 from typing import List
 
 import duckdb
@@ -8,6 +9,7 @@ import duckdb
 from fetchers.prices import IPriceFetcher
 from models.prices import InstrumentPriceRow
 from utils.conversions import Utils
+from utils.sql_tools import format_query
 
 
 class DuckDbPriceFetcher(IPriceFetcher):
@@ -30,8 +32,13 @@ class DuckDbPriceFetcher(IPriceFetcher):
             ORDER BY quote_date
         """
 
+        logger = logging.getLogger(__name__)
+        params = [ticker, start, end]
+        logger.info("DuckDB query (prices): %s", format_query(query, params))
+        logger.info("DuckDB params (prices): %s", params)
+
         with duckdb.connect(self.db_path, read_only=True) as con:
-            rows = con.execute(query, [ticker, start, end]).fetchall()
+            rows = con.execute(query, params).fetchall()
 
         return [
             InstrumentPriceRow(

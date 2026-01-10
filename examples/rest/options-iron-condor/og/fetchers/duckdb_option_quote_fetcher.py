@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import logging
 from typing import List
 
 import duckdb
@@ -8,6 +9,7 @@ import duckdb
 from fetchers.option_quotes import IOptionQuoteFetcher
 from models.quotes import OptionQuoteRow
 from utils.conversions import Utils
+from utils.sql_tools import format_query
 
 
 class DuckDbOptionQuoteFetcher(IOptionQuoteFetcher):
@@ -57,8 +59,13 @@ class DuckDbOptionQuoteFetcher(IOptionQuoteFetcher):
             ORDER BY quote_date, expiration, strike, "right"
         """
 
+        logger = logging.getLogger(__name__)
+        params = [symbol, start, end, min_dte, max_dte]
+        logger.info("DuckDB query (options): %s", format_query(query, params))
+        logger.info("DuckDB params (options): %s", params)
+
         with duckdb.connect(self.db_path, read_only=True) as con:
-            rows = con.execute(query, [symbol, start, end, min_dte, max_dte]).fetchall()
+            rows = con.execute(query, params).fetchall()
 
         return [
             OptionQuoteRow(
