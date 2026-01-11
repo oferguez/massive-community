@@ -37,7 +37,10 @@ The higher-level model will run for a target date and rebalance target (cash to 
 The current screener (`examples/rest/options-iron-condor/screener.py`) builds and ranks iron condors with the following rules:
 
 - **Expiration window**: only expirations between `min_days` and `max_days` from today.
-- **Liquidity filter**: keep options with `volume >= min_vol` and `open_interest >= min_oi`.
+- **Liquidity filter**: keep options with `volume >= min_vol` and `open_interest >= min_oi`. 
+   * Volume measures the total number of contracts that changed hands during a specific period (usually one trading day).
+   * Open Interest represents the total number of options contracts that are currently "live" or outstanding in the marke. **NOTE** currently its missing from the model 
+   
 - **Strike window**: consider strikes within ±`STRIKE_DISTANCE_PCT` of spot.
   - Calls: spot → spot × (1 + `STRIKE_DISTANCE_PCT`) and keep at most `MAX_OPTIONS_PER_SIDE`.
   - Puts: spot × (1 - `STRIKE_DISTANCE_PCT`) → spot and keep at most `MAX_OPTIONS_PER_SIDE` closest to spot.

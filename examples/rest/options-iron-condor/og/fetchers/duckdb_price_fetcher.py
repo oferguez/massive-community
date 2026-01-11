@@ -34,8 +34,8 @@ class DuckDbPriceFetcher(IPriceFetcher):
 
         logger = logging.getLogger(__name__)
         params = [ticker, start, end]
-        logger.info("DuckDB query (prices): %s", format_query(query, params))
-        logger.info("DuckDB params (prices): %s", params)
+        logger.debug("DuckDB query (prices): %s", format_query(query, params))
+        logger.debug("DuckDB params (prices): %s", params)
 
         with duckdb.connect(self.db_path, read_only=True) as con:
             rows = con.execute(query, params).fetchall()

@@ -17,7 +17,7 @@ def configure_logging(log_dir: str | Path = "logs") -> Path:
     stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setFormatter(formatter)
 
-    logging.basicConfig(level=logging.DEBUG, handlers=[file_handler, stream_handler])
+    logging.basicConfig(level=logging.INFO, handlers=[file_handler, stream_handler])
 
     logging.getLogger(__name__).info("starting")
     return log_file

@@ -15,14 +15,31 @@ class MarketSnapshotBuilder:
         self.price_fetcher = price_fetcher
         self.option_quote_fetcher = option_quote_fetcher
 
-    def build_for_date(self, quote_date: date | str, symbols: Iterable[str], min_dte: int, max_dte: int) -> MarketSnapshot:
+    def build_for_date(
+        self,
+        quote_date: date | str,
+        symbols: Iterable[str],
+        min_dte: int,
+        max_dte: int,
+        strike_distance_pct: float | None = None,
+        max_spread_pct: float | None = None,
+    ) -> MarketSnapshot:
         target_date = Utils.to_date(quote_date)
         date_str = Utils.to_yyyy_mm_dd(target_date) or target_date.isoformat()
 
         instruments: Dict[str, InstrumentSnapshot] = {}
         for symbol in symbols:
             price = self._pick_price(symbol, date_str, target_date)
-            option_chain = self._build_option_chain(symbol, date_str, target_date, min_dte, max_dte)
+            option_chain = self._build_option_chain(
+                symbol,
+                date_str,
+                target_date,
+                min_dte,
+                max_dte,
+                strike_distance_pct,
+                max_spread_pct,
+                price,
+            )
 
             instruments[symbol] = InstrumentSnapshot(
                 symbol=symbol,
@@ -40,7 +57,17 @@ class MarketSnapshotBuilder:
                 return row
         return rows[0] if rows else None
 
-    def _build_option_chain(self, symbol: str, date_str: str, target_date: date, min_dte: int, max_dte: int) -> Optional[OptionChain]:
+    def _build_option_chain(
+        self,
+        symbol: str,
+        date_str: str,
+        target_date: date,
+        min_dte: int,
+        max_dte: int,
+        strike_distance_pct: float | None,
+        max_spread_pct: float | None,
+        price: Optional[InstrumentPriceRow],
+    ) -> Optional[OptionChain]:
         quotes = self.option_quote_fetcher.fetch_option_quotes(
             symbol=symbol,
             date_from=date_str,
@@ -49,6 +76,20 @@ class MarketSnapshotBuilder:
             max_dte=max_dte,
         )
         filtered = [quote for quote in quotes if quote.quote_date == target_date]
+        if strike_distance_pct is not None and price and price.close is not None:
+            min_strike = price.close * (1 - strike_distance_pct)
+            max_strike = price.close * (1 + strike_distance_pct)
+            filtered = [
+                quote
+                for quote in filtered
+                if quote.strike is not None and min_strike <= quote.strike <= max_strike
+            ]
+        if max_spread_pct is not None:
+            filtered = [
+                quote
+                for quote in filtered
+                if quote.spread_pct is None or quote.spread_pct <= max_spread_pct
+            ]
         if not filtered:
             return None
 
