@@ -37,7 +37,7 @@
             "console": "integratedTerminal",
             "args": [
                 "--quote-date",
-                "2019-01-02",
+                "2019-01-07",
                 "--symbols",
                 "AAPL",
                 "--min-dte",

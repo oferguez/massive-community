@@ -172,11 +172,11 @@ def run_closeout_simulation(
     price_rows = price_fetcher.fetch_prices(symbol, start_str, end_str)
     price_index = {row.date: row for row in price_rows if row.date}
 
-    logger.info("%s: %d-day close-out cashflow:", symbol, days)
+    logger.info("  %s: %d-day close-out cashflow:", symbol, days)
     for condor in condors:
         open_credit = condor_net_credit(condor)
         logger.info(
-            "  %s open_credit=%s",
+            "  condor=%s, open_credit=%s",
             format_condor(condor),
             format_float(open_credit),
         )
@@ -221,7 +221,7 @@ def run_closeout_simulation(
                 )
                 continue
             logger.info(
-                "  %s close_date=%s spot_close=%s close_cashflow=%s",
+                "      %s close_date=%s spot_close=%s close_cashflow=%s",
                 symbol,
                 current_date,
                 format_float(close_price),
@@ -415,10 +415,15 @@ def main() -> None:
             start_date = Utils.to_date(args.quote_date)
             logger.info("%s: bearish sample closeout", symbol)
             run_closeout_simulation(symbol, bearish_samples, start_date, quote_fetcher, price_fetcher)
+            logger.info("")
+
             logger.info("%s: bullish sample closeout", symbol)
             run_closeout_simulation(symbol, bullish_samples, start_date, quote_fetcher, price_fetcher)
+            logger.info("")
+
             logger.info("%s: PoP sample closeout", symbol)
             run_closeout_simulation(symbol, pop_samples, start_date, quote_fetcher, price_fetcher)
+            logger.info("")
 
 
 if __name__ == "__main__":

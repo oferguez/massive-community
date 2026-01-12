@@ -20,17 +20,14 @@
   "pylint.cwd": "${workspaceFolder}/examples/rest/options-iron-condor/og",
   "editor.tabCompletion": "on",
   "files.associations": {
-    "*.log": "log",
-    "logs/*": "log"
+    "*.log": "log"
   },
-
   "highlight.regexes": {
-    "(^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3}\\s+(INFO|WARN|ERROR|DEBUG|CRITICAL).*)": {
-      "regexFlags": "g",
-      "filterFileRegex": ".*\\/logs\\/contract_fetcher_\\d{8}_\\d{6}\\.log$",
-      "decorations": [
-        { "color": "rgba(255,255,255,1)" }
-      ]
-    }
-  }  
+    "TODO": [
+      {
+        "backgroundColor": "pink",
+        "color": "black"
+      }
+    ]
+  }
 }
