@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from pathlib import Path
-from datetime import timedelta
-import logging
+from datetime import date, datetime, timedelta
 import argparse
+import csv
 import heapq
+import logging
 
 from dotenv import load_dotenv
 import pandas as pd
@@ -146,12 +147,48 @@ def condor_net_credit(
     return (short_put_mid + short_call_mid) - (long_put_mid + long_call_mid)
 
 
+def normalize_date(value: object) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (date, datetime)):
+        return Utils.to_yyyy_mm_dd(value) or value.isoformat()
+    return str(value)
+
+
+def write_closeout_csv(rows: list[dict[str, object]], output_path: Path) -> None:
+    fieldnames = [
+        "symbol",
+        "sample_label",
+        "condor",
+        "start_date",
+        "close_date",
+        "days_from_open",
+        "short_put_strike",
+        "long_put_strike",
+        "short_call_strike",
+        "long_call_strike",
+        "expiration",
+        "open_credit",
+        "close_credit",
+        "spot_close",
+        "status",
+    ]
+    with output_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
 def run_closeout_simulation(
     symbol: str,
     condors: list[object],
     start_date: object,
     quote_fetcher: DuckDbOptionQuoteFetcher,
     price_fetcher: DuckDbPriceFetcher,
+    sample_label: str,
+    output_dir: Path | None,
     days: int = 14,
 ) -> None:
     end_date = start_date + timedelta(days=days)
@@ -172,9 +209,30 @@ def run_closeout_simulation(
     price_rows = price_fetcher.fetch_prices(symbol, start_str, end_str)
     price_index = {row.date: row for row in price_rows if row.date}
 
+    rows: list[dict[str, object]] = []
     logger.info("  %s: %d-day close-out cashflow:", symbol, days)
     for condor in condors:
         open_credit = condor_net_credit(condor)
+        expirations = [
+            condor.short_put.expiration,
+            condor.short_call.expiration,
+            condor.long_put.expiration,
+            condor.long_call.expiration,
+        ]
+        expirations = [expiration for expiration in expirations if expiration]
+        expiration = min(expirations) if expirations else None
+        base_row = {
+            "symbol": symbol,
+            "sample_label": sample_label,
+            "condor": format_condor(condor),
+            "start_date": start_str,
+            "short_put_strike": condor.short_put.strike,
+            "long_put_strike": condor.long_put.strike,
+            "short_call_strike": condor.short_call.strike,
+            "long_call_strike": condor.long_call.strike,
+            "expiration": normalize_date(expiration),
+            "open_credit": open_credit,
+        }
         logger.info(
             "  condor=%s, open_credit=%s",
             format_condor(condor),
@@ -182,18 +240,21 @@ def run_closeout_simulation(
         )
         for offset in range(1, days + 1):
             current_date = start_date + timedelta(days=offset)
-            expirations = [
-                condor.short_put.expiration,
-                condor.short_call.expiration,
-                condor.long_put.expiration,
-                condor.long_call.expiration,
-            ]
-            expirations = [expiration for expiration in expirations if expiration]
             if expirations and current_date > min(expirations):
                 logger.info(
                     "%s: reached expiration %s; stopping closeout",
                     symbol,
                     min(expirations),
+                )
+                rows.append(
+                    {
+                        **base_row,
+                        "close_date": normalize_date(current_date),
+                        "days_from_open": offset,
+                        "spot_close": None,
+                        "close_credit": None,
+                        "status": "expired_stop",
+                    }
                 )
                 break
             close_price = None
@@ -211,6 +272,16 @@ def run_closeout_simulation(
                     symbol,
                     current_date,
                 )
+                rows.append(
+                    {
+                        **base_row,
+                        "close_date": normalize_date(current_date),
+                        "days_from_open": offset,
+                        "spot_close": close_price,
+                        "close_credit": None,
+                        "status": "missing_quotes",
+                    }
+                )
                 continue
             close_credit = condor_net_credit(condor, lookup=quote_index, quote_date=current_date)
             if close_credit is None:
@@ -218,6 +289,16 @@ def run_closeout_simulation(
                     "%s: missing mid prices for %s; skipping closeout",
                     symbol,
                     current_date,
+                )
+                rows.append(
+                    {
+                        **base_row,
+                        "close_date": normalize_date(current_date),
+                        "days_from_open": offset,
+                        "spot_close": close_price,
+                        "close_credit": None,
+                        "status": "missing_mid",
+                    }
                 )
                 continue
             logger.info(
@@ -227,6 +308,21 @@ def run_closeout_simulation(
                 format_float(close_price),
                 format_float(close_credit),
             )
+            rows.append(
+                {
+                    **base_row,
+                    "close_date": normalize_date(current_date),
+                    "days_from_open": offset,
+                    "spot_close": close_price,
+                    "close_credit": close_credit,
+                    "status": "ok",
+                }
+            )
+    if output_dir is not None:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / f"closeout_{symbol}_{sample_label}_{start_str}.csv"
+        write_closeout_csv(rows, output_path)
+        logger.info("Wrote closeout CSV to %s", output_path)
 
 
 def test_scan(ticker: str, as_of: str) -> None:
@@ -286,6 +382,11 @@ def main() -> None:
         type=float,
         default=0.0,
         help="Bias PoP spot by this pct (positive = bullish, negative = bearish).",
+    )
+    parser.add_argument(
+        "--closeout-csv-dir",
+        default=None,
+        help="Directory to write closeout CSVs (set to empty to disable).",
     )
     args = parser.parse_args()
     db_path = Path(__file__).parent / "data" / "aapl_options_norm.duckdb"
@@ -413,16 +514,42 @@ def main() -> None:
 
         if pop_samples or bullish_samples or bearish_samples:
             start_date = Utils.to_date(args.quote_date)
+            csv_dir = None if args.closeout_csv_dir is None else args.closeout_csv_dir.strip()
+            output_dir = Path(csv_dir) if csv_dir else None
             logger.info("%s: bearish sample closeout", symbol)
-            run_closeout_simulation(symbol, bearish_samples, start_date, quote_fetcher, price_fetcher)
+            run_closeout_simulation(
+                symbol,
+                bearish_samples,
+                start_date,
+                quote_fetcher,
+                price_fetcher,
+                "bearish",
+                output_dir,
+            )
             logger.info("")
 
             logger.info("%s: bullish sample closeout", symbol)
-            run_closeout_simulation(symbol, bullish_samples, start_date, quote_fetcher, price_fetcher)
+            run_closeout_simulation(
+                symbol,
+                bullish_samples,
+                start_date,
+                quote_fetcher,
+                price_fetcher,
+                "bullish",
+                output_dir,
+            )
             logger.info("")
 
             logger.info("%s: PoP sample closeout", symbol)
-            run_closeout_simulation(symbol, pop_samples, start_date, quote_fetcher, price_fetcher)
+            run_closeout_simulation(
+                symbol,
+                pop_samples,
+                start_date,
+                quote_fetcher,
+                price_fetcher,
+                "pop",
+                output_dir,
+            )
             logger.info("")
 
 
