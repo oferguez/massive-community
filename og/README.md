@@ -3,9 +3,9 @@
 This folder is the active research workspace for the options iron condor pipeline. It is intentionally separated from the `examples/rest/` demo content, and focuses on local DuckDB data, data-fetch abstractions, and snapshot assembly that will feed the portfolio/rebalancing model.
 
 ## What Data Exists Today
-- DuckDB files live in `examples/rest/options-iron-condor/og/data/`.
+- DuckDB files live in `og/data/`.
 - The current dataset was imported from Kaggle and includes option metadata and end-of-day quotes for a limited time range.
-- Schema reference lives in `examples/rest/options-iron-condor/og/data/schemas_desc.md` with tables like `option_quotes`, `underlying_eod`, and the `v_chain` view.
+- Schema reference lives in `og/data/schemas_desc.md` with tables like `option_quotes`, `underlying_eod`, and the `v_chain` view.
 
 ## Core Modules
 - `models/` contains dataclasses for contracts, prices, option quotes, and snapshots.
@@ -22,7 +22,7 @@ This folder is the active research workspace for the options iron condor pipelin
 
 Example:
 ```bash
-python examples/rest/options-iron-condor/og/main.py --quote-date 2020-01-02 --symbols AAPL --min-dte 1 --max-dte 7
+python og/main.py --quote-date 2020-01-02 --symbols AAPL --min-dte 1 --max-dte 7
 ```
 
 ## Closeout Sample Selection (Bearish/Bullish/PoP)
@@ -35,9 +35,9 @@ python examples/rest/options-iron-condor/og/main.py --quote-date 2020-01-02 --sy
 - **Sample sizes**: controlled by `BEARISH_SAMPLE_SIZE`, `BULLISH_SAMPLE_SIZE`, and `POP_SAMPLE_SIZE` in `main.py`.
 
 ## Data Access
-- Default DuckDB file: `examples/rest/options-iron-condor/og/data/aapl_options_norm.duckdb`.
+- Default DuckDB file: `og/data/aapl_options_norm.duckdb`.
 - Tables used today: `underlying_eod` for prices and `option_quotes` for options quotes.
-- Swap in another DuckDB file by updating `db_path` in `examples/rest/options-iron-condor/og/main.py`.
+- Swap in another DuckDB file by updating `db_path` in `og/main.py`.
 
 ## Workflow Direction (Planned)
 The higher-level model will run for a target date and rebalance target (cash to add/withdraw). It will load a portfolio and positions from the database (initially just `AAPL` with multiple legs is expected), scan quotes/greeks, and propose rebalancing choices based on market outlook. When a user selects a recommendation, the model will assume execution at current quotes, rebalance the portfolio, and persist the updated state. Execution commands and portfolio evolution should be tracked over time; via dependency injection, these can be stored in DuckDB, logs, or test doubles.

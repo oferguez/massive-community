@@ -25,7 +25,7 @@
             "name": "Debug contract_fetcher.py via uv",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/examples/rest/options-iron-condor/og/contract_fetcher.py",
+            "program": "${workspaceFolder}/og/contract_fetcher.py",
             "console": "integratedTerminal",
             "args": []
         },
@@ -33,7 +33,7 @@
             "name": "Debug og main snapshot",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/examples/rest/options-iron-condor/og/main.py",
+            "program": "${workspaceFolder}/og/main.py",
             "console": "integratedTerminal",
             "args": [
                 "--quote-date",
