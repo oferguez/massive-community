@@ -21,6 +21,7 @@
 - Use Python >= v3.13 features such as: 
     - Structural Pattern Matching (match-case statements)  
     - Generics such as in: `def safe_enum[E: Enum](enum_cls: type[E], val: Any, fallback: E | None = None) -> E | None:`
+    - use typing where appropriate
 
 
 ## Testing Guidelines
