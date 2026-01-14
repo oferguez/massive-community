@@ -1,5 +1,5 @@
 {
-  "python.defaultInterpreterPath": "/home/ofer/wsl_repos/massive-community/examples/rest/options-iron-condor/.venv/bin/python",
+  "python.defaultInterpreterPath": "/home/ofer/wsl_repos/massive-community/og/.venv/bin/python",
   "python.analysis.diagnosticMode": "openFilesOnly",
   "python.analysis.typeCheckingMode": "off",
   "python.analysis.diagnosticSeverityOverrides": {
@@ -15,9 +15,9 @@
   },
   "pylint.args": [
     "--rcfile",
-    "${workspaceFolder}/examples/rest/options-iron-condor/og/pyproject.toml"
+    "${workspaceFolder}/og/pyproject.toml"
   ],
-  "pylint.cwd": "${workspaceFolder}/examples/rest/options-iron-condor/og",
+  "pylint.cwd": "${workspaceFolder}/og",
   "editor.tabCompletion": "on",
   "files.associations": {
     "*.log": "log"

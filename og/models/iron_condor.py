@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date, datetime
 import math
 from typing import Sequence
 
@@ -17,7 +18,15 @@ class IronCondorLegs:
 
     def signature(
         self,
-    ) -> tuple[float | None, float | None, float | None, float | None, int | None, object | None, object | None]:
+    ) -> tuple[
+        float | None,
+        float | None,
+        float | None,
+        float | None,
+        int | None,
+        date | None,
+        datetime | None,
+    ]:
         as_of_values = [
             self.short_put.as_of,
             self.long_put.as_of,
@@ -46,7 +55,7 @@ class IronCondorLegs:
         dte_values = [value for value in dte_values if value is not None]
         return min(dte_values) if dte_values else None
 
-    def min_expiration(self) -> object | None:
+    def min_expiration(self) -> date | None:
         expirations = [
             self.short_put.expiration,
             self.long_put.expiration,

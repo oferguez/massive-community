@@ -16,7 +16,7 @@ def format_int(value: int | None) -> str:
     return "None" if value is None else str(value)
 
 
-def normalize_date(value: object) -> str | None:
+def normalize_date(value: date | datetime | str | None) -> str | None:
     if value is None:
         return None
     if isinstance(value, str):

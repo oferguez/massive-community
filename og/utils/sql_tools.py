@@ -3,8 +3,10 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Sequence
 
+SqlValue = bool | int | float | str | date | datetime | None
 
-def format_sql_value(value: object) -> str:
+
+def format_sql_value(value: SqlValue) -> str:
     match value:
         case None:
             return "NULL"
@@ -20,7 +22,7 @@ def format_sql_value(value: object) -> str:
             return str(value)
 
 
-def format_query(query: str, params: Sequence[object]) -> str:
+def format_query(query: str, params: Sequence[SqlValue]) -> str:
     parts = query.split("?")
     if len(parts) - 1 != len(params):
         return query.strip()

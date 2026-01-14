@@ -4,3 +4,9 @@ disable = [
   "unused-import",
   "line-too-long",
 ]
+
+[tool.pyright]
+pythonVersion = "3.13"
+typeCheckingMode = "basic"
+include = ["."]
+exclude = ["**/__pycache__"]

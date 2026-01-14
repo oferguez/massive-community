@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import date, timedelta
 from pathlib import Path
 import csv
 import logging
@@ -8,14 +8,17 @@ import logging
 from fetchers.duckdb_option_quote_fetcher import DuckDbOptionQuoteFetcher
 from fetchers.duckdb_price_fetcher import DuckDbPriceFetcher
 from models.iron_condor import IronCondorLegs
-from utils.condor_helpers import condor_net_credit, format_condor
+from utils.condor_helpers import QuoteLookup, condor_net_credit, format_condor
 from utils.conversions import Utils
 from utils.formatting import format_float, normalize_date
 
 logger = logging.getLogger(__name__)
 
 
-def write_closeout_csv(rows: list[dict[str, object]], output_path: Path) -> None:
+CloseoutRowValue = str | int | float | None
+
+
+def write_closeout_csv(rows: list[dict[str, CloseoutRowValue]], output_path: Path) -> None:
     fieldnames = [
         "symbol",
         "sample_label",
@@ -42,7 +45,7 @@ def write_closeout_csv(rows: list[dict[str, object]], output_path: Path) -> None
 def run_closeout_simulation(
     symbol: str,
     condors: list[IronCondorLegs],
-    start_date: object,
+    start_date: date,
     quote_fetcher: DuckDbOptionQuoteFetcher,
     price_fetcher: DuckDbPriceFetcher,
     sample_label: str,
@@ -59,7 +62,7 @@ def run_closeout_simulation(
         min_dte=0,
         max_dte=3650,
     )
-    quote_index: dict[tuple[object, object, object, object], object] = {}
+    quote_index: QuoteLookup = {}
     for quote in backtest_quotes:
         if not quote.quote_date or quote.strike is None or not quote.right or not quote.expiration:
             continue
@@ -67,7 +70,7 @@ def run_closeout_simulation(
     price_rows = price_fetcher.fetch_prices(symbol, start_str, end_str)
     price_index = {row.date: row for row in price_rows if row.date}
 
-    rows: list[dict[str, object]] = []
+    rows: list[dict[str, CloseoutRowValue]] = []
     logger.info("  %s: %d-day close-out cashflow:", symbol, days)
     for condor in condors:
         open_credit = condor_net_credit(condor)

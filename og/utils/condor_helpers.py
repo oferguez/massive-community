@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+from datetime import date, datetime
+
 from models.iron_condor import IronCondorLegs
 from models.quotes import OptionQuoteRow
 from utils.formatting import format_float
+
+QuoteKey = tuple[date | None, str | None, float | None, date]
+QuoteLookup = dict[QuoteKey, OptionQuoteRow]
+CondorSignature = tuple[float | None, float | None, float | None, float | None, int | None, date | None, datetime | None]
 
 
 def quote_mid(quote: OptionQuoteRow) -> float | None:
@@ -32,9 +38,7 @@ def select_samples(
     key_fn,
 ) -> list[IronCondorLegs]:
     samples: list[IronCondorLegs] = []
-    seen: set[
-        tuple[float | None, float | None, float | None, float | None, int | None, object | None, object | None]
-    ] = set()
+    seen: set[CondorSignature] = set()
     for condor in sorted(candidates, key=key_fn):
         signature = condor.signature()
         if signature in seen:
@@ -48,8 +52,8 @@ def select_samples(
 
 def condor_net_credit(
     condor: IronCondorLegs,
-    lookup: dict[tuple[object, object, object, object], OptionQuoteRow] | None = None,
-    quote_date: object | None = None,
+    lookup: QuoteLookup | None = None,
+    quote_date: date | None = None,
 ) -> float | None:
     if lookup is None:
         legs = [condor.short_put, condor.short_call, condor.long_put, condor.long_call]
@@ -66,6 +70,6 @@ def condor_net_credit(
     short_call_mid = quote_mid(legs[1])
     long_put_mid = quote_mid(legs[2])
     long_call_mid = quote_mid(legs[3])
-    if None in (short_put_mid, short_call_mid, long_put_mid, long_call_mid):
+    if short_put_mid is None or short_call_mid is None or long_put_mid is None or long_call_mid is None:
         return None
     return (short_put_mid + short_call_mid) - (long_put_mid + long_call_mid)

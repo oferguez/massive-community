@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 import logging
 
 from models.quotes import OptionQuoteRow
@@ -12,19 +13,32 @@ logger = logging.getLogger(__name__)
 
 def log_option_chain_samples(
     symbol: str,
-    quotes: list[OptionQuoteRow],
+    quotes: Sequence[OptionQuoteRow],
     price: float,
     otm_sample_size: int,
     atm_sample_size: int,
 ) -> None:
-    quotes_with_strike = [quote for quote in quotes if quote.strike is not None]
+    quotes_with_strike: list[OptionQuoteRow] = []
+    otm_calls: list[OptionQuoteRow] = []
+    otm_puts: list[OptionQuoteRow] = []
+    for quote in quotes:
+        strike = quote.strike
+        if strike is None:
+            continue
+        quotes_with_strike.append(quote)
+        if quote.right == "C" and strike > price:
+            otm_calls.append(quote)
+        elif quote.right == "P" and strike < price:
+            otm_puts.append(quote)
     if not quotes_with_strike:
         return
-    otm_calls = [quote for quote in quotes_with_strike if quote.right == "C" and quote.strike > price]
-    otm_puts = [quote for quote in quotes_with_strike if quote.right == "P" and quote.strike < price]
-    otm_calls_sorted = sorted(otm_calls, key=lambda quote: quote.strike, reverse=True)
-    otm_puts_sorted = sorted(otm_puts, key=lambda quote: quote.strike)
-    atm_sorted = sorted(quotes_with_strike, key=lambda quote: abs(quote.strike - price))
+
+    def strike_value(quote: OptionQuoteRow) -> float:
+        return quote.strike if quote.strike is not None else 0.0
+
+    otm_calls_sorted = sorted(otm_calls, key=strike_value, reverse=True)
+    otm_puts_sorted = sorted(otm_puts, key=strike_value)
+    atm_sorted = sorted(quotes_with_strike, key=lambda quote: abs(strike_value(quote) - price))
 
     logger.info("%s: most OTM calls (%d):", symbol, otm_sample_size)
     for quote in otm_calls_sorted[:otm_sample_size]:
