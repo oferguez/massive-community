@@ -25,6 +25,15 @@ Example:
 python examples/rest/options-iron-condor/og/main.py --quote-date 2020-01-02 --symbols AAPL --min-dte 1 --max-dte 7
 ```
 
+## Closeout Sample Selection (Bearish/Bullish/PoP)
+`main.py` builds iron condor candidates from the option chain and then selects three sample sets for closeout simulation.
+
+- **Bearish samples**: filter condors with `short_call.strike >= spot` and rank by nearest short call to spot (ascending `short_call.strike - spot`), breaking ties with higher PoP.
+- **Bullish samples**: filter condors with `short_put.strike <= spot` and rank by nearest short put to spot (ascending `spot - short_put.strike`), breaking ties with higher PoP.
+- **PoP samples**: rank all condors by highest probability of profit (descending PoP).
+- **De-duplication**: samples are unique by strikes + DTE + expiration (see `condor_signature`).
+- **Sample sizes**: controlled by `BEARISH_SAMPLE_SIZE`, `BULLISH_SAMPLE_SIZE`, and `POP_SAMPLE_SIZE` in `main.py`.
+
 ## Data Access
 - Default DuckDB file: `examples/rest/options-iron-condor/og/data/aapl_options_norm.duckdb`.
 - Tables used today: `underlying_eod` for prices and `option_quotes` for options quotes.
