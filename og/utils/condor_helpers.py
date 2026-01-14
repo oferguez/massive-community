@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from models.iron_condor import IronCondorLegs
+from models.quotes import OptionQuoteRow
 from utils.formatting import format_float
 
 
-def quote_mid(quote: object) -> float | None:
+def quote_mid(quote: OptionQuoteRow) -> float | None:
     if quote.mid is not None:
         return quote.mid
     if quote.bid is not None and quote.ask is not None:
@@ -11,73 +13,30 @@ def quote_mid(quote: object) -> float | None:
     return None
 
 
-def condor_metadata(condor: object) -> tuple[int | None, object | None, object | None]:
-    dte_values = [
-        condor.short_put.dte,
-        condor.long_put.dte,
-        condor.short_call.dte,
-        condor.long_call.dte,
-    ]
-    dte_values = [value for value in dte_values if value is not None]
-    dte = min(dte_values) if dte_values else None
-    expirations = [
-        condor.short_put.expiration,
-        condor.long_put.expiration,
-        condor.short_call.expiration,
-        condor.long_call.expiration,
-    ]
-    expirations = [exp for exp in expirations if exp]
-    expiration = min(expirations) if expirations else None
-    as_of_values = [
-        condor.short_put.as_of,
-        condor.long_put.as_of,
-        condor.short_call.as_of,
-        condor.long_call.as_of,
-    ]
-    as_of_values = [value for value in as_of_values if value]
-    as_of_value = min(as_of_values) if as_of_values else None
-    return dte, expiration, as_of_value
-
-
-def format_condor(condor: object) -> str:
-    _, expiration, _ = condor_metadata(condor)
+def format_condor(condor: IronCondorLegs) -> str:
+    expiration = condor.min_expiration()
     return (
         "["
         f"long_put={format_float(condor.long_put.strike)}@{format_float(quote_mid(condor.long_put))} "
         f"short_put={format_float(condor.short_put.strike)}@{format_float(quote_mid(condor.short_put))} "
         f"short_call={format_float(condor.short_call.strike)}@{format_float(quote_mid(condor.short_call))} "
-        f"long_call={format_float(condor.long_call.strike)}@{format_float(quote_mid(condor.long_call))}"
+        f"long_call={format_float(condor.long_call.strike)}@{format_float(quote_mid(condor.long_call))} "
         f"exp={expiration} "
         "]"
     )
 
 
-def condor_signature(
-    condor: object,
-) -> tuple[float | None, float | None, float | None, float | None, int | None, object | None, object | None]:
-    dte, expiration, as_of_value = condor_metadata(condor)
-    return (
-        condor.short_put.strike,
-        condor.long_put.strike,
-        condor.short_call.strike,
-        condor.long_call.strike,
-        dte,
-        expiration,
-        as_of_value,
-    )
-
-
 def select_samples(
-    candidates: list[object],
+    candidates: list[IronCondorLegs],
     size: int,
     key_fn,
-) -> list[object]:
-    samples: list[object] = []
+) -> list[IronCondorLegs]:
+    samples: list[IronCondorLegs] = []
     seen: set[
         tuple[float | None, float | None, float | None, float | None, int | None, object | None, object | None]
     ] = set()
     for condor in sorted(candidates, key=key_fn):
-        signature = condor_signature(condor)
+        signature = condor.signature()
         if signature in seen:
             continue
         seen.add(signature)
@@ -88,8 +47,8 @@ def select_samples(
 
 
 def condor_net_credit(
-    condor: object,
-    lookup: dict[tuple[object, object, object, object], object] | None = None,
+    condor: IronCondorLegs,
+    lookup: dict[tuple[object, object, object, object], OptionQuoteRow] | None = None,
     quote_date: object | None = None,
 ) -> float | None:
     if lookup is None:

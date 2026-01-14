@@ -7,6 +7,7 @@ import logging
 
 from fetchers.duckdb_option_quote_fetcher import DuckDbOptionQuoteFetcher
 from fetchers.duckdb_price_fetcher import DuckDbPriceFetcher
+from models.iron_condor import IronCondorLegs
 from utils.condor_helpers import condor_net_credit, format_condor
 from utils.conversions import Utils
 from utils.formatting import format_float, normalize_date
@@ -40,7 +41,7 @@ def write_closeout_csv(rows: list[dict[str, object]], output_path: Path) -> None
 
 def run_closeout_simulation(
     symbol: str,
-    condors: list[object],
+    condors: list[IronCondorLegs],
     start_date: object,
     quote_fetcher: DuckDbOptionQuoteFetcher,
     price_fetcher: DuckDbPriceFetcher,

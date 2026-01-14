@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
+from models.quotes import OptionQuoteRow
 from utils.conversions import Utils
 
 
@@ -25,7 +26,7 @@ def normalize_date(value: object) -> str | None:
     return str(value)
 
 
-def format_quote(quote: object, price: float) -> str:
+def format_quote(quote: OptionQuoteRow, price: float) -> str:
     moneyness = None
     if quote.strike is not None:
         moneyness = (quote.strike - price) / price

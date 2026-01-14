@@ -31,7 +31,7 @@ python og/main.py --quote-date 2020-01-02 --symbols AAPL --min-dte 1 --max-dte 7
 - **Bearish samples**: filter condors with `short_call.strike >= spot` and rank by nearest short call to spot (ascending `short_call.strike - spot`), breaking ties with higher PoP.
 - **Bullish samples**: filter condors with `short_put.strike <= spot` and rank by nearest short put to spot (ascending `spot - short_put.strike`), breaking ties with higher PoP.
 - **PoP samples**: rank all condors by highest probability of profit (descending PoP).
-- **De-duplication**: samples are unique by strikes + DTE + expiration (see `condor_signature`).
+- **De-duplication**: samples are unique by strikes + DTE + expiration (see `IronCondorLegs.signature()`).
 - **Sample sizes**: controlled by `BEARISH_SAMPLE_SIZE`, `BULLISH_SAMPLE_SIZE`, and `POP_SAMPLE_SIZE` in `main.py`.
 
 ## Data Access

@@ -15,6 +15,47 @@ class IronCondorLegs:
     short_call: OptionQuoteRow
     long_call: OptionQuoteRow
 
+    def signature(
+        self,
+    ) -> tuple[float | None, float | None, float | None, float | None, int | None, object | None, object | None]:
+        as_of_values = [
+            self.short_put.as_of,
+            self.long_put.as_of,
+            self.short_call.as_of,
+            self.long_call.as_of,
+        ]
+        as_of_values = [value for value in as_of_values if value]
+        as_of_value = min(as_of_values) if as_of_values else None
+        return (
+            self.short_put.strike,
+            self.long_put.strike,
+            self.short_call.strike,
+            self.long_call.strike,
+            self.min_dte(),
+            self.min_expiration(),
+            as_of_value,
+        )
+
+    def min_dte(self) -> int | None:
+        dte_values = [
+            self.short_put.dte,
+            self.long_put.dte,
+            self.short_call.dte,
+            self.long_call.dte,
+        ]
+        dte_values = [value for value in dte_values if value is not None]
+        return min(dte_values) if dte_values else None
+
+    def min_expiration(self) -> object | None:
+        expirations = [
+            self.short_put.expiration,
+            self.long_put.expiration,
+            self.short_call.expiration,
+            self.long_call.expiration,
+        ]
+        expirations = [exp for exp in expirations if exp]
+        return min(expirations) if expirations else None
+
 
 def estimate_probability_of_profit(
     condor: IronCondorLegs,
@@ -25,16 +66,9 @@ def estimate_probability_of_profit(
 ) -> float:
     if condor.short_put.strike is None or condor.short_call.strike is None:
         return 0.0
-    dte_values = [
-        condor.short_put.dte,
-        condor.long_put.dte,
-        condor.short_call.dte,
-        condor.long_call.dte,
-    ]
-    dte_values = [value for value in dte_values if value is not None]
-    if not dte_values:
+    dte = condor.min_dte()
+    if dte is None:
         return 0.0
-    dte = min(dte_values)
     if dte <= 0:
         return 0.0
 

@@ -98,14 +98,7 @@ def main() -> None:
             OTM_SAMPLE_SIZE,
             ATM_SAMPLE_SIZE,
         )
-        (
-            bearish_samples,
-            bullish_samples,
-            pop_samples,
-            bearish_distance,
-            bullish_distance,
-            pop_value,
-        ) = build_condor_samples(
+        metrics = build_condor_samples(
             condor_candidates,
             price,
             args.pop_bias_pct,
@@ -113,25 +106,16 @@ def main() -> None:
             BULLISH_SAMPLE_SIZE,
             POP_SAMPLE_SIZE,
         )
-        log_condor_samples(
-            symbol,
-            bearish_samples,
-            bullish_samples,
-            pop_samples,
-            bearish_distance,
-            bullish_distance,
-            pop_value,
-            POP_SAMPLE_SIZE,
-        )
+        log_condor_samples(symbol, metrics, POP_SAMPLE_SIZE)
 
-        if pop_samples or bullish_samples or bearish_samples:
+        if metrics.pop_samples or metrics.bullish_samples or metrics.bearish_samples:
             start_date = Utils.to_date(args.quote_date)
             csv_dir = None if args.closeout_csv_dir is None else args.closeout_csv_dir.strip()
             output_dir = Path(csv_dir) if csv_dir else None
             logger.info("%s: bearish sample closeout", symbol)
             run_closeout_simulation(
                 symbol,
-                bearish_samples,
+                metrics.bearish_samples,
                 start_date,
                 quote_fetcher,
                 price_fetcher,
@@ -143,7 +127,7 @@ def main() -> None:
             logger.info("%s: bullish sample closeout", symbol)
             run_closeout_simulation(
                 symbol,
-                bullish_samples,
+                metrics.bullish_samples,
                 start_date,
                 quote_fetcher,
                 price_fetcher,
@@ -155,7 +139,7 @@ def main() -> None:
             logger.info("%s: PoP sample closeout", symbol)
             run_closeout_simulation(
                 symbol,
-                pop_samples,
+                metrics.pop_samples,
                 start_date,
                 quote_fetcher,
                 price_fetcher,

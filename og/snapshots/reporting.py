@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import logging
 
+from models.quotes import OptionQuoteRow
+from models.condor_sampling import CondorSampleMetrics
 from utils.condor_helpers import condor_net_credit, format_condor
 from utils.formatting import format_float, format_quote
 
@@ -10,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 def log_option_chain_samples(
     symbol: str,
-    quotes: list[object],
+    quotes: list[OptionQuoteRow],
     price: float,
     otm_sample_size: int,
     atm_sample_size: int,
@@ -35,38 +37,29 @@ def log_option_chain_samples(
         logger.info("  %s", format_quote(quote, price))
 
 
-def log_condor_samples(
-    symbol: str,
-    bearish_samples: list[object],
-    bullish_samples: list[object],
-    pop_samples: list[object],
-    bearish_distance,
-    bullish_distance,
-    pop_value,
-    pop_sample_size: int,
-) -> None:
-    logger.info("%s: bearish samples (%d):", symbol, len(bearish_samples))
-    for condor in bearish_samples:
+def log_condor_samples(symbol: str, metrics: CondorSampleMetrics, pop_sample_size: int) -> None:
+    logger.info("%s: bearish samples (%d):", symbol, len(metrics.bearish_samples))
+    for condor in metrics.bearish_samples:
         logger.info(
             "  %s dist=%s pop=%s",
             format_condor(condor),
-            format_float(bearish_distance(condor)),
-            format_float(pop_value(condor)),
+            format_float(metrics.bearish_distance(condor)),
+            format_float(metrics.pop_value(condor)),
         )
-    logger.info("%s: bullish samples (%d):", symbol, len(bullish_samples))
-    for condor in bullish_samples:
+    logger.info("%s: bullish samples (%d):", symbol, len(metrics.bullish_samples))
+    for condor in metrics.bullish_samples:
         logger.info(
             "  %s dist=%s pop=%s",
             format_condor(condor),
-            format_float(bullish_distance(condor)),
-            format_float(pop_value(condor)),
+            format_float(metrics.bullish_distance(condor)),
+            format_float(metrics.pop_value(condor)),
         )
     logger.info("%s: top PoP samples (%d):", symbol, pop_sample_size)
-    for condor in pop_samples:
+    for condor in metrics.pop_samples:
         net_credit = condor_net_credit(condor)
         logger.info(
             "  %s pop=%s credit=%s",
             format_condor(condor),
-            format_float(pop_value(condor)),
+            format_float(metrics.pop_value(condor)),
             format_float(net_credit),
         )
